@@ -53,7 +53,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>(seedProducts);
   const [customers, setCustomers] = useState<Customer[]>(seedCustomers);
   const [reservations] = useState<Reservation[]>(seedReservations);
-  const [store, setStore] = useState(stores[0]);
+  const [store, setStore] = useState<string>(stores[0]!);
   const [online, setOnline] = useState(true);
   const [feed, setFeed] = useState<{ id: string; text: string; at: string }[]>([]);
 
