@@ -1,0 +1,9 @@
+{
+  "name": "Modah Gestão",
+  "short_name": "Modah",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f7fa",
+  "theme_color": "#4f46e5",
+  "icons": [{ "src": "/favicon.ico", "sizes": "64x64", "type": "image/x-icon" }]
+}
