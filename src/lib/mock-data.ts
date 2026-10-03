@@ -42,6 +42,7 @@ export type Customer = {
   cpf: string;
   address: string;
   preferredSize: Size;
+  notes?: string;
   av: {
     total: number;
     balance: number;
