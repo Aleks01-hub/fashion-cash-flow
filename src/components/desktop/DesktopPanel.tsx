@@ -8,6 +8,8 @@ import {
   Radio,
   Users,
   Wallet,
+  Menu,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -23,6 +25,7 @@ import {
 import { StatusBadge } from "@/components/StatusBadge";
 import { customerStatus, useStore } from "@/lib/store";
 import { brl, dateOnly, dateTime } from "@/lib/format";
+import { CustomerLedger } from "./CustomerLedger";
 
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -200,9 +203,9 @@ export function DesktopPanel() {
           </>
         )}
 
-        {(section === "dashboard" || section === "fichas") && (
+        {section === "dashboard" && (
           <section className="card-elevated overflow-x-auto rounded-2xl p-4">
-            <h2 className="mb-3 font-bold">Fichas em Atraso</h2>
+            <h2 className="mb-3 font-bold">Clientes em Atraso</h2>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -215,7 +218,7 @@ export function DesktopPanel() {
               <TableBody>
                 {overdue.map((c) => (
                   <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.name}</TableCell>
+                    <TableCell className="cursor-pointer font-medium text-primary hover:underline" onClick={() => openCustomer(c.id)}>{c.name}</TableCell>
                     <TableCell>
                       <StatusBadge tone="danger">{dateOnly(c.av!.dueDate)}</StatusBadge>
                     </TableCell>
