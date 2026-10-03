@@ -9,6 +9,7 @@ import {
   Users,
   Wallet,
   Menu,
+  ShoppingBag,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -26,10 +27,12 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { customerStatus, useStore } from "@/lib/store";
 import { brl, dateOnly, dateTime } from "@/lib/format";
 import { CustomerLedger } from "./CustomerLedger";
+import { SalesSection } from "./SalesSection";
 
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "fichas", label: "Clientes", icon: Users },
+  { id: "vendas", label: "Vendas", icon: ShoppingBag },
   { id: "catalogo", label: "Catálogo", icon: Boxes },
   { id: "fechamento", label: "Fechamento de Caixa", icon: BarChart3 },
 ] as const;
@@ -119,6 +122,8 @@ export function DesktopPanel() {
           </Button>
           <h1 className="text-lg font-bold">{NAV.find((n) => n.id === section)?.label}</h1>
         </div>
+
+        {section === "vendas" && <SalesSection />}
 
         {section === "fichas" && selected && (
           <CustomerLedger customer={selected} onBack={() => setSelectedId(null)} />

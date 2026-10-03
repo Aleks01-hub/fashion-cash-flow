@@ -44,6 +44,8 @@ type Ctx = {
   addCustomer: (c: Omit<Customer, "id" | "payments" | "purchases">) => void;
   restock: (productId: string, color: string, size: string, qty: number) => void;
   updateProduct: (id: string, patch: Partial<Product>) => void;
+  addProduct: (p: Omit<Product, "id">) => void;
+  deleteProduct: (id: string) => void;
   addLedgerPurchase: (customerId: string, items: string, price: number) => void;
   addLedgerPayment: (customerId: string, amount: number, method: string) => void;
   feed: { id: string; text: string; at: string }[];
@@ -147,6 +149,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const updateProduct = useCallback((id: string, patch: Partial<Product>) => {
     setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   }, []);
+  const addProduct = useCallback((p: Omit<Product, "id">) => {
+    setProducts((prev) => [{ ...p, id: crypto.randomUUID() }, ...prev]);
+  }, []);
+  const deleteProduct = useCallback((id: string) => {
+    setProducts((prev) => prev.filter((p) => p.id !== id));
+  }, []);
 
   const addLedgerPurchase = useCallback(
     (customerId: string, items: string, price: number) => {
@@ -207,11 +215,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addCustomer,
       restock,
       updateProduct,
+      addProduct,
+      deleteProduct,
       addLedgerPurchase,
       addLedgerPayment,
       feed,
     }),
-    [products, customers, reservations, store, online, registerSale, registerAv, updateCustomer, addCustomer, restock, updateProduct, addLedgerPurchase, addLedgerPayment, feed],
+    [products, customers, reservations, store, online, registerSale, registerAv, updateCustomer, addCustomer, restock, updateProduct, addProduct, deleteProduct, addLedgerPurchase, addLedgerPayment, feed],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

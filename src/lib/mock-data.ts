@@ -17,6 +17,14 @@ export type Product = {
   photo: string;
   tags: string[];
   variations: Variation[];
+  details?: ProductDetails;
+};
+
+export type ProductDetails = {
+  barcode: string; unit: string; cost: number; margin: number; wholesale: number;
+  group: string; subgroup: string; supplier: string; warranty: string; brand: string;
+  reference: string; validity: string; commission: number; location: string;
+  hasGrid: boolean; notes: string; stock: number; inactive: boolean;
 };
 
 export type Purchase = {
