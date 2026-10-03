@@ -26,7 +26,7 @@ import { brl, dateOnly, dateTime } from "@/lib/format";
 
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "fichas", label: "Fichas em Atraso", icon: Users },
+  { id: "fichas", label: "Clientes", icon: Users },
   { id: "catalogo", label: "Catálogo", icon: Boxes },
   { id: "fechamento", label: "Fechamento de Caixa", icon: BarChart3 },
 ] as const;
@@ -34,6 +34,10 @@ const NAV = [
 export function DesktopPanel() {
   const { customers, products, feed, updateProduct, store } = useStore();
   const [section, setSection] = useState<(typeof NAV)[number]["id"]>("dashboard");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [tab, setTab] = useState<"todos" | "atraso">("todos");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = customers.find((c) => c.id === selectedId) ?? null;
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -54,23 +58,44 @@ export function DesktopPanel() {
     return { arrecadado, vendas, pecas, pendente };
   }, [customers, overdue]);
 
+  const go = (id: (typeof NAV)[number]["id"]) => {
+    setSection(id);
+    setSelectedId(null);
+    setMenuOpen(false);
+  };
+  const openCustomer = (id: string) => {
+    setSection("fichas");
+    setSelectedId(id);
+  };
+  const list = tab === "atraso" ? overdue : customers;
+
   return (
-    <div className="flex min-h-screen">
-      <aside className="hidden w-60 shrink-0 border-r border-border bg-sidebar p-4 md:block">
+    <div className="relative min-h-screen">
+      {menuOpen && (
+        <div className="fixed inset-0 z-40 bg-foreground/30" onClick={() => setMenuOpen(false)} />
+      )}
+      <aside
+        className={`fixed left-0 top-0 z-50 h-full w-64 border-r border-border bg-sidebar p-4 transition-transform duration-200 ${
+          menuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         <div className="mb-6 flex items-center gap-2">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-primary text-primary-foreground">
             <Radio className="h-4 w-4" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold">Caixa Central</p>
             <p className="truncate text-xs text-muted-foreground">{store}</p>
           </div>
+          <button onClick={() => setMenuOpen(false)} aria-label="Fechar menu" className="rounded-lg p-1 hover:bg-accent">
+            <X className="h-4 w-4" />
+          </button>
         </div>
         <nav className="space-y-1">
           {NAV.map((n) => (
             <button
               key={n.id}
-              onClick={() => setSection(n.id)}
+              onClick={() => go(n.id)}
               className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium ${
                 section === n.id
                   ? "bg-primary text-primary-foreground"
@@ -84,20 +109,61 @@ export function DesktopPanel() {
         </nav>
       </aside>
 
-      <main className="min-w-0 flex-1 space-y-6 p-4 md:p-8">
-        <div className="flex gap-2 overflow-x-auto md:hidden">
-          {NAV.map((n) => (
-            <button
-              key={n.id}
-              onClick={() => setSection(n.id)}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs ${
-                section === n.id ? "border-primary bg-primary text-primary-foreground" : "border-border"
-              }`}
-            >
-              {n.label}
-            </button>
-          ))}
+      <main className="min-w-0 space-y-6 p-4 md:p-8">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="icon" aria-label="Abrir menu" onClick={() => setMenuOpen(true)}>
+            <Menu className="h-5 w-5" />
+          </Button>
+          <h1 className="text-lg font-bold">{NAV.find((n) => n.id === section)?.label}</h1>
         </div>
+
+        {section === "fichas" && selected && (
+          <CustomerLedger customer={selected} onBack={() => setSelectedId(null)} />
+        )}
+
+        {section === "fichas" && !selected && (
+          <section className="card-elevated overflow-x-auto rounded-2xl p-4">
+            <div className="mb-3 flex gap-2">
+              {(["todos", "atraso"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+                    tab === t ? "border-primary bg-primary text-primary-foreground" : "border-border"
+                  }`}
+                >
+                  {t === "todos" ? `Todos os clientes (${customers.length})` : `Em atraso (${overdue.length})`}
+                </button>
+              ))}
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Telefone</TableHead>
+                  <TableHead>Situação</TableHead>
+                  <TableHead>Saldo Devedor</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {list.map((c) => (
+                  <TableRow key={c.id} className="cursor-pointer" onClick={() => openCustomer(c.id)}>
+                    <TableCell className="font-medium text-primary underline-offset-2 hover:underline">{c.name}</TableCell>
+                    <TableCell>{c.whatsapp}</TableCell>
+                    <TableCell>
+                      {customerStatus(c) === "atraso" ? (
+                        <StatusBadge tone="danger">Em atraso</StatusBadge>
+                      ) : (
+                        <StatusBadge tone="success">Em dia</StatusBadge>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-semibold">{brl(c.av?.balance ?? 0)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </section>
+        )}
 
         {section === "dashboard" && (
           <>
