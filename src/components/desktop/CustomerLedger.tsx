@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, Minus, Plus } from "lucide-react";
+import { ArrowLeft, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,9 +11,8 @@ import type { Customer } from "@/lib/mock-data";
 type Entry = { id: string; date: string; kind: "compra" | "abate"; amount: number; label: string };
 
 export function CustomerLedger({ customer, onBack }: { customer: Customer; onBack: () => void }) {
-  const { addLedgerPurchase, addLedgerPayment, updateCustomer } = useStore();
+  const { addLedgerPayment, updateCustomer } = useStore();
   const [amount, setAmount] = useState("");
-  const [desc, setDesc] = useState("");
   const [method, setMethod] = useState("Pix");
 
   const rows = useMemo(() => {
@@ -81,7 +80,7 @@ export function CustomerLedger({ customer, onBack }: { customer: Customer; onBac
               </div>
               {!r.first && (
                 <div className="flex items-baseline gap-3 border-t border-foreground/40 pt-1" style={{ width: "10.5rem" }}>
-                  <span className="w-6 text-muted-foreground">R=</span>
+                  <span className="w-6 text-muted-foreground">{r.kind === "compra" ? "T=" : "R="}</span>
                   <span className="w-28 text-right font-bold">{brl(r.result)}</span>
                 </div>
               )}
@@ -95,17 +94,13 @@ export function CustomerLedger({ customer, onBack }: { customer: Customer; onBac
         <span className="text-xl font-bold">{brl(balance)}</span>
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto_auto_auto]">
+      <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto_auto]">
         <Input placeholder="Valor (R$)" value={amount} onChange={(e) => setAmount(e.target.value)} />
-        <Input placeholder="Itens da compra" value={desc} onChange={(e) => setDesc(e.target.value)} />
         <select className="h-9 rounded-md border border-input bg-background px-2 text-sm" value={method} onChange={(e) => setMethod(e.target.value)}>
           {["Pix", "Dinheiro", "Cartão Débito", "Cartão Crédito"].map((m) => <option key={m}>{m}</option>)}
         </select>
         <Button variant="outline" disabled={!value || quitada} onClick={() => { addLedgerPayment(customer.id, value, method); setAmount(""); }}>
           <Minus className="h-4 w-4" /> Abater
-        </Button>
-        <Button disabled={!value} onClick={() => { addLedgerPurchase(customer.id, desc || "Compra", value); setAmount(""); setDesc(""); }}>
-          <Plus className="h-4 w-4" /> Compra
         </Button>
       </div>
     </section>
