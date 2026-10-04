@@ -65,7 +65,8 @@ export function QuickSaleScreen() {
   const [dueDate, setDueDate] = useState("");
   const [newCustomerOpen, setNewCustomerOpen] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: "", whatsapp: "" });
-  const [cartOpen, setCartOpen] = useState(false);\n  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const selectedCustomer = customers.find((c) => c.id === selectedCustomerId) ?? null;
   const activeProducts = useMemo(() => products.filter((p) => !p.details?.inactive), [products]);
