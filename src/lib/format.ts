@@ -14,4 +14,4 @@ export const dateOnly = (iso: string) =>
   new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
 
 export const isOverdue = (dueDate?: string | null) =>
-  !!dueDate && new Date(dueDate).getTime() < new Date("2026-09-03").getTime();
+  !!dueDate && new Date(dueDate + "T23:59:59").getTime() < new Date().getTime();
