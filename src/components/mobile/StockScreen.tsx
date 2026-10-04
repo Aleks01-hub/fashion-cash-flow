@@ -48,7 +48,7 @@ export function StockScreen() {
 
   return (
     <div className="space-y-4 px-4 pb-28 pt-4">
-      <h1 className="text-xl font-bold">Estoque & Variações</h1>
+      <div className="flex items-center justify-between gap-3"><div><h1 className="text-xl font-bold">Estoque</h1><p className="text-xs text-muted-foreground">Consulta rápida por produto, cor e tamanho.</p></div><div className="rounded-xl bg-muted px-3 py-2 text-right"><p className="text-[10px] text-muted-foreground">Unidades</p><p className="text-sm font-bold">{products.reduce((n, p) => n + p.variations.reduce((m, v) => m + v.qty, 0), 0)}</p></div></div>
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -59,7 +59,7 @@ export function StockScreen() {
         />
       </div>
 
-      <Chips items={categories} value={category} onChange={setCategory} />
+      <div className="grid grid-cols-2 gap-2"><div className="rounded-xl border border-border p-3"><p className="text-[11px] text-muted-foreground">Variações</p><p className="font-bold">{products.reduce((n, p) => n + p.variations.length, 0)}</p></div><div className="rounded-xl border border-warning/30 bg-warning/5 p-3"><p className="text-[11px] text-muted-foreground">No mínimo</p><p className="font-bold">{products.reduce((n, p) => n + p.variations.filter((v) => v.qty <= p.minStock).length, 0)}</p></div></div>\n\n      <Chips items={categories} value={category} onChange={setCategory} />
       <Chips items={["Todos", ...SIZES]} value={size} onChange={setSize} />
       <Chips
         items={STATUS.map((s) => s.label)}
