@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Wallet, Package, ShoppingCart, Truck, BarChart3, Repeat2, CalendarDays, ShieldCheck } from "lucide-react";
+import { Wallet, Package, ShoppingCart, Truck, BarChart3, CalendarDays, ShieldCheck, ChevronLeft, ChevronRight, Cake, Plus } from "lucide-react";
 
 type Cash = { open: boolean; openedAt: string; opening: number; withdrawals: number; additions: number; closedAt?: string; counted?: number };
 type Purchase = { id:string; date:string; supplier:string; total:number; status:"recebida"|"pendente"; notes:string };
@@ -114,12 +114,53 @@ function ExchangesTab() {
 }
 
 function EventsTab() {
+  const { customers } = useStore();
   const [items,setItems]=usePersisted<Event[]>("modah:events",[]);
+  const [cursor,setCursor]=useState(() => new Date());
   const [date,setDate]=useState("");const [title,setTitle]=useState("");const [type,setType]=useState<Event["type"]>("Importante");const [notes,setNotes]=useState("");
+  const year=cursor.getFullYear(); const month=cursor.getMonth();
+  const first=new Date(year,month,1); const daysInMonth=new Date(year,month+1,0).getDate();
+  const offset=(first.getDay()+6)%7;
+  const monthName=new Intl.DateTimeFormat("pt-BR",{month:"long",year:"numeric"}).format(cursor);
+  const birthdayEvents=customers.filter(c=>c.birthDate).map(c=>({
+    id:"birthday-"+c.id, date:year+"-"+String(month+1).padStart(2,"0")+"-"+c.birthDate.slice(8,10),
+    title:"Aniversário de "+c.name, type:"Aniversário" as const, notes:"Cliente cadastrado"
+  }));
+  const monthEvents=[...items.filter(e=>e.date.slice(0,7)===year+"-"+String(month+1).padStart(2,"0")), ...birthdayEvents];
   const add=()=>{if(!date||!title)return;setItems([...items,{id:crypto.randomUUID(),date,title,type,notes}].sort((a,b)=>a.date.localeCompare(b.date)));setDate("");setTitle("");setNotes("")};
-  return <section className="card-elevated rounded-2xl p-4 space-y-4"><h2 className="font-bold">Agenda comercial</h2><div className="grid gap-2 md:grid-cols-5"><Input type="date" value={date} onChange={e=>setDate(e.target.value)}/><Input placeholder="Título" value={title} onChange={e=>setTitle(e.target.value)}/><select className="h-10 rounded-md border bg-background px-3" value={type} onChange={e=>setType(e.target.value as Event["type"])}>{["Aniversário","Feriado","Promoção","Importante"].map(x=><option key={x}>{x}</option>)}</select><Input placeholder="Observações" value={notes} onChange={e=>setNotes(e.target.value)}/><Button onClick={add}>Adicionar</Button></div><Table><TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Tipo</TableHead><TableHead>Evento</TableHead><TableHead>Observações</TableHead></TableRow></TableHeader><TableBody>{items.map(x=><TableRow key={x.id}><TableCell>{dateOnly(x.date)}</TableCell><TableCell>{x.type}</TableCell><TableCell>{x.title}</TableCell><TableCell>{x.notes}</TableCell></TableRow>)}</TableBody></Table></section>;
+  const eventFor=(day:number)=>monthEvents.filter(e=>e.date.slice(8,10)===String(day).padStart(2,"0"));
+  const goMonth=(delta:number)=>setCursor(new Date(year,month+delta,1));
+  const openBirthday=(event: Event)=>{ if(event.type!=="Aniversário") return; const customer=customers.find(c=>event.title==="Aniversário de "+c.name); if(customer) window.dispatchEvent(new CustomEvent("modah:open-customer",{detail:customer.id})); };
+  return <section className="space-y-4">
+    <div className="card-elevated rounded-2xl p-4">
+      <div className="mb-4 flex items-center justify-between gap-2">
+        <Button variant="outline" size="icon" onClick={()=>goMonth(-1)} aria-label="Mês anterior"><ChevronLeft className="h-4 w-4"/></Button>
+        <h2 className="text-lg font-bold capitalize">{monthName}</h2>
+        <Button variant="outline" size="icon" onClick={()=>goMonth(1)} aria-label="Próximo mês"><ChevronRight className="h-4 w-4"/></Button>
+      </div>
+      <div className="grid grid-cols-7 border-l border-t text-xs">
+        {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d=><div key={d} className="border-b border-r bg-muted p-2 text-center font-semibold">{d}</div>)}
+        {Array.from({length:offset}).map((_,i)=><div key={"e"+i} className="min-h-24 border-b border-r bg-muted/30"/>)}
+        {Array.from({length:daysInMonth},(_,i)=>i+1).map(day=>{
+          const events=eventFor(day);
+          return <div key={day} className="min-h-24 border-b border-r p-2">
+            <div className="mb-1 text-right font-semibold">{day}</div>
+            <div className="space-y-1">{events.map(e=><button key={e.id} onClick={()=>openBirthday(e)} className={`w-full rounded-md px-2 py-1 text-left text-[11px] ${e.type==="Aniversário"?"bg-warning/15 text-warning":"bg-primary/10 text-primary"} ${e.type==="Aniversário"?"cursor-pointer":"cursor-default"}`}><span className="flex items-center gap-1">{e.type==="Aniversário"&&<Cake className="h-3 w-3"/>}{e.title}</span></button>)}</div>
+          </div>;
+        })}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground"><span>• Eventos cadastrados</span><span>• Aniversários dos clientes</span><span>• Clique no aniversário para abrir a ficha</span></div>
+    </div>
+    <div className="card-elevated rounded-2xl p-4 space-y-4">
+      <div className="flex items-center justify-between"><div><h2 className="font-bold">Adicionar evento</h2><p className="text-sm text-muted-foreground">Os eventos ficam salvos no calendário.</p></div><Plus className="h-5 w-5 text-muted-foreground"/></div>
+      <div className="grid gap-2 md:grid-cols-5"><Input type="date" value={date} onChange={e=>setDate(e.target.value)}/><Input placeholder="Título" value={title} onChange={e=>setTitle(e.target.value)}/><select className="h-10 rounded-md border bg-background px-3" value={type} onChange={e=>setType(e.target.value as Event["type"])}>{["Aniversário","Feriado","Promoção","Importante"].map(x=><option key={x}>{x}</option>)}</select><Input placeholder="Observações" value={notes} onChange={e=>setNotes(e.target.value)}/><Button onClick={add}>Adicionar</Button></div>
+    </div>
+    <div className="card-elevated rounded-2xl p-4">
+      <h3 className="mb-3 font-bold">Eventos do mês</h3>
+      {monthEvents.length===0?<p className="text-sm text-muted-foreground">Nenhum evento neste mês.</p>:<Table><TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Tipo</TableHead><TableHead>Evento</TableHead><TableHead>Observações</TableHead></TableRow></TableHeader><TableBody>{monthEvents.sort((a,b)=>a.date.localeCompare(b.date)).map(x=><TableRow key={x.id} className={x.type==="Aniversário"?"cursor-pointer":""} onClick={()=>openBirthday(x)}><TableCell>{dateOnly(x.date)}</TableCell><TableCell>{x.type}</TableCell><TableCell className={x.type==="Aniversário"?"font-medium text-primary":""}>{x.title}</TableCell><TableCell>{x.notes}</TableCell></TableRow>)}</TableBody></Table>}
+    </div>
+  </section>;
 }
-
 function UsersTab() {
   const [items,setItems]=usePersisted<User[]>("modah:users",[
     {id:"u1",name:"Administrador",role:"Administrador",active:true},
