@@ -1,23 +1,23 @@
 import { useState } from "react";
-import { Mic, Users, Shirt, ShoppingBasket } from "lucide-react";
-import { VoiceScreen } from "./VoiceScreen";
+import { ShoppingCart, Users, Shirt, ShoppingBasket } from "lucide-react";
+import { QuickSaleScreen } from "./QuickSaleScreen";
 import { CustomersScreen } from "./CustomersScreen";
 import { StockScreen } from "./StockScreen";
 import { ReservationsScreen } from "./ReservationsScreen";
 
 const TABS = [
-  { id: "voz", label: "Caixa", icon: Mic },
+  { id: "vender", label: "Vender", icon: ShoppingCart },
   { id: "fichas", label: "Fichas", icon: Users },
   { id: "estoque", label: "Estoque", icon: Shirt },
   { id: "reservas", label: "Reservas", icon: ShoppingBasket },
 ] as const;
 
 export function MobileApp() {
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("voz");
+  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("vender");
 
   return (
     <div className="mx-auto min-h-screen w-full max-w-lg">
-      {tab === "voz" && <VoiceScreen />}
+      {tab === "vender" && <QuickSaleScreen />}
       {tab === "fichas" && <CustomersScreen />}
       {tab === "estoque" && <StockScreen />}
       {tab === "reservas" && <ReservationsScreen />}
