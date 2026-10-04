@@ -157,7 +157,7 @@ function NewCustomerDialog({
         ))}
       </div>
       <DialogFooter>
-        <Button disabled={!form.name} onClick={() => onSave({ ...form, av: null })}>
+        <Button disabled={!form.name} onClick={() => onSave({ ...form, birthDate: null, av: null })}>
           Salvar ficha
         </Button>
       </DialogFooter>
