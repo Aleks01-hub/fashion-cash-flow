@@ -1,5 +1,6 @@
 package br.com.caixacentral.sale;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.util.UUID;
 
@@ -17,7 +18,7 @@ public class SaleItem {
     private double total;
 
     public UUID getId(){return id;}
-    public Sale getSale(){return sale;} public void setSale(Sale sale){this.sale=sale;}
+    @JsonIgnore public Sale getSale(){return sale;} public void setSale(Sale sale){this.sale=sale;}
     public UUID getProductId(){return productId;} public void setProductId(UUID productId){this.productId=productId;}
     public String getProductName(){return productName;} public void setProductName(String productName){this.productName=productName;}
     public String getColor(){return color;} public void setColor(String color){this.color=color;}
