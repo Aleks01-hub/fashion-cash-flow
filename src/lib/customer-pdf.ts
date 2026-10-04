@@ -8,7 +8,7 @@ const esc = (value: string) =>
     ">": "&gt;",
     '"': "&quot;",
     "'": "&#039;",
-  })[char] ?? char);
+  } as Record<string, string>)[char] ?? char);
 
 export function printCustomerPdf(customer: Customer) {
   const businessName = localStorage.getItem("modah:business-name") || "Caixa Central";
