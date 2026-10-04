@@ -13,7 +13,7 @@ type Ctx = {
   products: Product[]; customers: Customer[]; reservations: Reservation[]; sales: Sale[];
   store: string; setStore: (s: string) => void; online: boolean; setOnline: (v: boolean) => void;
   registerSale: (c: Extract<ParsedCommand, { type: "venda" }>) => void;
-  createSale: (sale: NewSale) => boolean; cancelSale: (id: string) => boolean;
+  createSale: (sale: NewSale) => boolean; updateSale: (id: string, sale: NewSale) => boolean; cancelSale: (id: string) => boolean;
   registerAv: (c: Extract<ParsedCommand, { type: "abate_av" }>) => void;
   updateCustomer: (id: string, patch: Partial<Customer>) => void;
   addCustomer: (c: Omit<Customer, "id" | "payments" | "purchases">) => void;
@@ -90,6 +90,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return true;
   }, [push, products, sales, store]);
 
+  const updateSale = useCallback((id: string, sale: NewSale) => {
+    const old = sales.find((s) => s.id === id);
+    if (!old) return false;
+    setProducts((prev) => prev.map((p) => {
+      const oldItems = old.items.filter((i) => i.productId === p.id);
+      const newItems = sale.items.filter((i) => i.productId === p.id);
+      return { ...p, variations: p.variations.map((v) => {
+        const returned = oldItems.filter((i) => i.color === v.color && i.size === v.size).reduce((n, i) => n + i.quantity, 0);
+        const sold = newItems.filter((i) => i.color === v.color && i.size === v.size).reduce((n, i) => n + i.quantity, 0);
+        return returned || sold ? { ...v, qty: v.qty + returned - sold } : v;
+      }) };
+    }));
+    const record: Sale = { ...sale, id, number: old.number, date: old.date, store, paymentStatus: sale.paymentMethod === "Ficha (AV)" && sale.amountPaid < sale.total ? "pendente" : "pago" };
+    setSales((prev) => prev.map((s) => s.id === id ? record : s));
+    if (sale.customerId) {
+      setCustomers((prev) => prev.map((c) => c.id === sale.customerId ? { ...c, purchases: [{ id, date: old.date, items: sale.items.map((i) => i.productName + " " + i.color + " " + i.size + " x" + i.quantity).join(", "), price: sale.total, method: sale.paymentMethod }, ...c.purchases.filter((p) => p.id !== id)] } : c));
+    }
+    push("Venda #" + old.number + " editada");
+    return true;
+  }, [push, sales, store]);
+
   const cancelSale = useCallback((id: string) => {
     const sale = sales.find((s) => s.id === id);
     if (!sale) return false;
@@ -153,7 +174,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     push("Abatimento de " + brl(amount) + " registrado (" + method + ")");
   }, [push]);
 
-  const value = useMemo(() => ({ products, customers, reservations, sales, store, setStore, online, setOnline, registerSale, createSale, cancelSale, registerAv, updateCustomer, addCustomer, restock, updateProduct, addProduct, deleteProduct, addLedgerPurchase, addLedgerPayment, feed }), [products, customers, reservations, sales, store, online, registerSale, createSale, cancelSale, registerAv, updateCustomer, addCustomer, restock, updateProduct, addProduct, deleteProduct, addLedgerPurchase, addLedgerPayment, feed]);
+  const value = useMemo(() => ({ products, customers, reservations, sales, store, setStore, online, setOnline, registerSale, createSale, updateSale, cancelSale, registerAv, updateCustomer, addCustomer, restock, updateProduct, addProduct, deleteProduct, addLedgerPurchase, addLedgerPayment, feed }), [products, customers, reservations, sales, store, online, registerSale, createSale, updateSale, cancelSale, registerAv, updateCustomer, addCustomer, restock, updateProduct, addProduct, deleteProduct, addLedgerPurchase, addLedgerPayment, feed]);
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 
