@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bell, Download, LockKeyhole, Moon, Save, Settings, Sun, Trash2, UserCircle } from "lucide-react";
+import { Bell, Download, LockKeyhole, Moon, Save, Settings, Sun, Trash2, UserCircle, Users, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,7 @@ import { stores } from "@/lib/mock-data";
 import { useStore } from "@/lib/store";
 
 type Profile = { name: string; email: string; phone: string; role: "Administrador" | "Gerente" | "Vendedor" | "Caixa"; photo: string };
+type UserItem = { id:string; name:string; role:"Administrador"|"Gerente"|"Vendedor"|"Caixa"; active:boolean };
 type SettingsData = {
   businessName: string; defaultDueDays: number; lowStockWarning: boolean; birthdayReminders: boolean;
   overdueReminders: boolean; eventNotifications: boolean; theme: "light" | "dark" | "system"; compactTables: boolean;
@@ -27,6 +28,9 @@ export function ProfileSettingsSection() {
   const { store, setStore } = useStore();
   const [profile,setProfile]=useState<Profile>(()=>load("modah:profile",defaultProfile));
   const [settings,setSettings]=useState<SettingsData>(()=>load("modah:settings",defaultSettings));
+  const [users,setUsers]=useState<UserItem[]>(()=>load("modah:users",[{id:"u1",name:"Administrador",role:"Administrador",active:true},{id:"u2",name:"Vendedor",role:"Vendedor",active:true}]));
+  const [newUser,setNewUser]=useState("");
+  const [newRole,setNewRole]=useState<UserItem["role"]>("Vendedor");
   const [saved,setSaved]=useState(false);
 
   useEffect(()=>{
@@ -38,6 +42,7 @@ export function ProfileSettingsSection() {
   const save=()=>{
     localStorage.setItem("modah:profile",JSON.stringify(profile));
     localStorage.setItem("modah:settings",JSON.stringify(settings));
+    localStorage.setItem("modah:users",JSON.stringify(users));
     localStorage.setItem("modah:business-name",settings.businessName);
     window.dispatchEvent(new Event("modah:profile-updated"));
     setSaved(true); setTimeout(()=>setSaved(false),1800);
@@ -96,6 +101,13 @@ export function ProfileSettingsSection() {
         ].map(([key,label,value])=><label key={String(key)} className="flex items-center justify-between rounded-xl border p-3 text-sm"><span>{label}</span><input type="checkbox" checked={Boolean(value)} onChange={e=>setSettings({...settings,[key as string]:e.target.checked} as SettingsData)}/></label>)}
       </div>
       <div className="mt-5 flex flex-wrap gap-2"><Button onClick={save}><Save className="h-4 w-4"/>{saved?"Salvo":"Salvar configurações"}</Button></div>
+    </section>
+
+    <section className="card-elevated rounded-2xl p-5">
+      <div className="mb-5 flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary"><Users className="h-5 w-5"/></div><div><h2 className="font-bold">Equipe e permissões</h2><p className="text-sm text-muted-foreground">Perfis saem da Gestão e ficam centralizados nas configurações.</p></div></div>
+      <div className="grid gap-2 md:grid-cols-[1fr_180px_auto]"><Input placeholder="Nome do usuário" value={newUser} onChange={e=>setNewUser(e.target.value)}/><select className="h-10 rounded-md border bg-background px-3" value={newRole} onChange={e=>setNewRole(e.target.value as UserItem["role"])}>{["Administrador","Gerente","Vendedor","Caixa"].map(x=><option key={x}>{x}</option>)}</select><Button onClick={()=>{if(!newUser.trim())return;setUsers([...users,{id:crypto.randomUUID(),name:newUser,role:newRole,active:true}]);setNewUser("")}}><UserPlus className="h-4 w-4"/>Adicionar</Button></div>
+      <div className="mt-4 space-y-2">{users.map(u=><div key={u.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"><div><p className="font-medium">{u.name}</p><p className="text-xs text-muted-foreground">{u.role}</p></div><div className="flex items-center gap-2"><span className={"rounded-full px-2.5 py-1 text-xs "+(u.active?"bg-success/15 text-success":"bg-muted text-muted-foreground")}>{u.active?"Ativo":"Inativo"}</span><Button size="sm" variant="outline" onClick={()=>setUsers(users.map(x=>x.id===u.id?{...x,active:!x.active}:x))}>{u.active?"Desativar":"Ativar"}</Button></div></div>)}</div>
+      <p className="mt-3 text-xs text-muted-foreground">A autorização efetiva por perfil será aplicada pelo backend quando o login estiver conectado à API.</p>
     </section>
 
     <section className="card-elevated rounded-2xl p-5">
