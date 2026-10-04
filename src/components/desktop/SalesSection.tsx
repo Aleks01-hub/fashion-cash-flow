@@ -226,8 +226,7 @@ function ProductForm({ form, setForm }: { form: Form; setForm: (f: Form) => void
         </div>
         <div className="col-span-2">
           <Label className="text-xs">Estoque atual</Label>
-          <Input type="number" value={form.stock || ""} onChange={(e) => set("stock", Number(e.target.value) || 0)}
-            className="text-right text-lg font-bold" />
+          <Input readOnly value={form.variations.reduce((n,v)=>n+v.qty,0)} className="bg-muted text-right text-lg font-bold" />
         </div>
       </div>
 
