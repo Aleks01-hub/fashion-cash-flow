@@ -33,6 +33,7 @@ export function DesktopPanel() {
   const [newCustomerOpen, setNewCustomerOpen] = useState(false);
   const [customerSearch, setCustomerSearch] = useState("");
   const [profileName, setProfileName] = useState(() => typeof window === "undefined" ? "Alex" : (() => { try { return JSON.parse(window.localStorage.getItem("modah:profile") || "null")?.name || "Alex"; } catch { return "Alex"; } })());
+  const [businessName, setBusinessName] = useState(() => typeof window === "undefined" ? "Caixa Central" : window.localStorage.getItem("modah:business-name") || "Caixa Central");
   const selected = customers.find((c) => c.id === selectedId) ?? null;
 
   useEffect(() => {
@@ -46,7 +47,7 @@ export function DesktopPanel() {
 
   useEffect(() => {
     const t = setTimeout(() => toast("Monitor em tempo real", { description: "Sistema pronto para registrar vendas e movimentações." }), 2500);
-    const onProfile = () => { try { setProfileName(JSON.parse(window.localStorage.getItem("modah:profile") || "null")?.name || "Alex"); } catch {} };
+    const onProfile = () => { try { setProfileName(JSON.parse(window.localStorage.getItem("modah:profile") || "null")?.name || "Alex"); setBusinessName(window.localStorage.getItem("modah:business-name") || "Caixa Central"); } catch {} };
     window.addEventListener("modah:profile-updated", onProfile);
     return () => { clearTimeout(t); window.removeEventListener("modah:profile-updated", onProfile); };
   }, []);
@@ -67,7 +68,7 @@ export function DesktopPanel() {
   return <div className="relative min-h-screen">
     {menuOpen && <div className="fixed inset-0 z-40 bg-foreground/30" onClick={() => setMenuOpen(false)} />}
     <aside className={`fixed left-0 top-0 z-50 h-full w-64 border-r border-border bg-sidebar p-4 transition-transform duration-200 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
-      <div className="mb-4 flex items-center gap-2"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-primary text-primary-foreground"><Radio className="h-4 w-4" /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">Caixa Central</p><p className="truncate text-xs text-muted-foreground">{store}</p></div><button onClick={() => setMenuOpen(false)} className="rounded-lg p-1 hover:bg-accent"><X className="h-4 w-4" /></button></div>
+      <div className="mb-4 flex items-center gap-2"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-primary text-primary-foreground"><Radio className="h-4 w-4" /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{businessName}</p><p className="truncate text-xs text-muted-foreground">{store}</p></div><button onClick={() => setMenuOpen(false)} className="rounded-lg p-1 hover:bg-accent"><X className="h-4 w-4" /></button></div>
       <button onClick={() => go("configuracoes")} className="mb-4 flex w-full items-center gap-3 rounded-xl border bg-card p-3 text-left hover:bg-accent"><div className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary"><UserCircle className="h-5 w-5"/></div><div className="min-w-0"><p className="truncate text-sm font-semibold">{profileName}</p><p className="text-xs text-muted-foreground">Perfil e configurações</p></div></button><nav className="space-y-1">{NAV.map((n) => <button key={n.id} onClick={() => go(n.id)} className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium ${section === n.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}><n.icon className="h-4 w-4 shrink-0" /><span>{n.label}</span></button>)}</nav>
     </aside>
 
