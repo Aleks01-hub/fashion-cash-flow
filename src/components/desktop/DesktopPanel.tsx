@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, BarChart3, Boxes, LayoutDashboard, MessageCircle, Radio, Users, Menu, ShoppingBag, X, Package, Wallet as WalletIcon } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +70,7 @@ export function DesktopPanel() {
       {section === "dashboard" && <>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric label="Total de Vendas" value={brl(totals.vendas)} icon={BarChart3} tone="primary" /><Metric label="Recebido" value={brl(totals.arrecadado)} icon={WalletIcon} tone="success" /><Metric label="Peças Vendidas" value={String(totals.pecas)} icon={Boxes} tone="warning" /><Metric label="Pendente em Fichas" value={brl(totals.pendente)} icon={AlertTriangle} tone="danger" /></div>
         <div className="grid gap-4 xl:grid-cols-2"><SalesRanking sales={sales} /><CustomerRanking sales={sales} customers={customers} /></div>
+        <div className="grid gap-4 xl:grid-cols-2"><PaymentChart sales={sales} /><SalesTrendChart sales={sales} /></div>
         <MiniCalendar customers={customers} />
         <section className="card-elevated rounded-2xl p-4"><h2 className="mb-3 flex items-center gap-2 font-bold"><Radio className="h-4 w-4 text-primary" /> Monitor em tempo real</h2><div className="space-y-2">{feed.length === 0 ? <p className="text-sm text-muted-foreground">Aguardando eventos…</p> : feed.map((f) => <div key={f.id} className="rounded-xl bg-muted p-3 text-sm">{f.text}<span className="ml-2 text-xs text-muted-foreground">{dateTime(f.at)}</span></div>)}</div></section>
         <section className="card-elevated overflow-x-auto rounded-2xl p-4"><h2 className="mb-3 font-bold">Clientes em Atraso</h2><Table><TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Vencimento</TableHead><TableHead>Saldo</TableHead><TableHead>Cobrança</TableHead></TableRow></TableHeader><TableBody>{overdue.map((c) => <TableRow key={c.id}><TableCell className="cursor-pointer font-medium text-primary" onClick={() => openCustomer(c.id)}>{c.name}</TableCell><TableCell><StatusBadge tone="danger">{dateOnly(c.av!.dueDate)}</StatusBadge></TableCell><TableCell className="font-semibold">{brl(c.av!.balance)}</TableCell><TableCell><Button asChild size="sm" variant="outline"><a href={`https://wa.me/${c.whatsapp}?text=${encodeURIComponent(`Olá ${c.name}, sua ficha está com saldo de ${brl(c.av!.balance)}.`)}`} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4" /> WhatsApp</a></Button></TableCell></TableRow>)}</TableBody></Table></section>
@@ -95,18 +97,91 @@ function Metric({ label, value, icon: Icon, tone }: { label: string; value: stri
 type SalesList = ReturnType<typeof useStore>["sales"];
 type CustomerList = ReturnType<typeof useStore>["customers"];
 
+function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return <section className="card-elevated rounded-2xl p-4">
+    <h2 className="mb-4 font-bold">{title}</h2>
+    <div className="h-72 w-full">{children}</div>
+  </section>;
+}
+
 function SalesRanking({ sales }: { sales: SalesList }) {
   const map = new Map<string, number>();
   sales.forEach((s) => s.items.forEach((i) => map.set(i.productName, (map.get(i.productName) ?? 0) + i.quantity)));
-  const top = [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
-  return <section className="card-elevated rounded-2xl p-4"><h2 className="mb-3 font-bold">Produtos mais vendidos</h2>{top.length === 0 ? <p className="text-sm text-muted-foreground">Sem vendas ainda.</p> : <ol className="space-y-2 text-sm">{top.map(([n, q], i) => <li key={n} className="flex justify-between rounded-xl bg-muted p-3"><span>{i + 1}. {n}</span><b>{q} un</b></li>)}</ol>}</section>;
+  const data = [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, quantity]) => ({ name, quantity }));
+
+  return <ChartCard title="Produtos mais vendidos">
+    {data.length === 0 ? <p className="text-sm text-muted-foreground">Sem vendas ainda.</p> : <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data} layout="vertical" margin={{ left: 12, right: 12 }}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis type="number" allowDecimals={false} />
+        <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 11 }} />
+        <Tooltip formatter={(value) => [`${value} un`, "Vendidas"]} />
+        <Bar dataKey="quantity" name="Vendidas" radius={[0, 6, 6, 0]} />
+      </BarChart>
+    </ResponsiveContainer>}
+  </ChartCard>;
 }
 
 function CustomerRanking({ sales, customers }: { sales: SalesList; customers: CustomerList }) {
   const map = new Map<string, number>();
-  sales.forEach((s) => { const name = s.customerName || customers.find((c) => c.id === s.customerId)?.name || "Consumidor"; map.set(name, (map.get(name) ?? 0) + s.total); });
-  const top = [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
-  return <section className="card-elevated rounded-2xl p-4"><h2 className="mb-3 font-bold">Clientes que mais compram</h2>{top.length === 0 ? <p className="text-sm text-muted-foreground">Sem vendas ainda.</p> : <ol className="space-y-2 text-sm">{top.map(([n, v], i) => <li key={n} className="flex justify-between rounded-xl bg-muted p-3"><span>{i + 1}. {n}</span><b>{brl(v)}</b></li>)}</ol>}</section>;
+  sales.forEach((s) => {
+    const name = s.customerName || customers.find((c) => c.id === s.customerId)?.name || "Consumidor";
+    map.set(name, (map.get(name) ?? 0) + s.total);
+  });
+  const data = [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name, total]) => ({ name, total }));
+
+  return <ChartCard title="Clientes que mais compram">
+    {data.length === 0 ? <p className="text-sm text-muted-foreground">Sem vendas ainda.</p> : <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data} margin={{ left: 8, right: 12 }}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} />
+        <YAxis tickFormatter={(v) => brl(Number(v))} width={70} />
+        <Tooltip formatter={(value) => [brl(Number(value)), "Compras"]} />
+        <Bar dataKey="total" name="Compras" radius={[6, 6, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>}
+  </ChartCard>;
+}
+
+function PaymentChart({ sales }: { sales: SalesList }) {
+  const map = new Map<string, number>();
+  sales.forEach((s) => map.set(s.paymentMethod, (map.get(s.paymentMethod) ?? 0) + s.total));
+  const data = [...map.entries()].map(([name, value]) => ({ name, value }));
+
+  return <ChartCard title="Vendas por forma de pagamento">
+    {data.length === 0 ? <p className="text-sm text-muted-foreground">Sem vendas ainda.</p> : <ResponsiveContainer width="100%" height="100%">
+      <PieChart>
+        <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+          {data.map((entry) => <Cell key={entry.name} />)}
+        </Pie>
+        <Tooltip formatter={(value) => brl(Number(value))} />
+      </PieChart>
+    </ResponsiveContainer>}
+  </ChartCard>;
+}
+
+function SalesTrendChart({ sales }: { sales: SalesList }) {
+  const map = new Map<string, number>();
+  sales.forEach((s) => {
+    const day = s.date.slice(0, 10);
+    map.set(day, (map.get(day) ?? 0) + s.total);
+  });
+  const data = [...map.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-14).map(([date, total]) => ({
+    date: date.split("-").reverse().slice(0, 2).join("/"),
+    total,
+  }));
+
+  return <ChartCard title="Evolução das vendas">
+    {data.length === 0 ? <p className="text-sm text-muted-foreground">Sem vendas ainda.</p> : <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data} margin={{ left: 8, right: 12 }}>
+        <CartesianGrid strokeDasharray="3 3" />
+        <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+        <YAxis tickFormatter={(v) => brl(Number(v))} width={75} />
+        <Tooltip formatter={(value) => [brl(Number(value)), "Vendas"]} />
+        <Line type="monotone" dataKey="total" name="Vendas" strokeWidth={3} dot={{ r: 3 }} />
+      </LineChart>
+    </ResponsiveContainer>}
+  </ChartCard>;
 }
 
 function MiniCalendar({ customers }: { customers: CustomerList }) {
