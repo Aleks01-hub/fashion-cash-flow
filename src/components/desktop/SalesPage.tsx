@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Edit, Eye, Plus, Search, X } from "lucide-react";
+import { Edit, Eye, Plus, Search, X, Repeat2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,7 @@ export function SalesPage() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const [exchangeSaleId, setExchangeSaleId] = useState<string | null>(null);
 
   const filtered = useMemo(() => sales.filter((s) => {
     const q = search.toLowerCase();
@@ -39,7 +40,7 @@ export function SalesPage() {
       </div>
     </div>
     <Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto"><DialogHeader><DialogTitle>Nova venda</DialogTitle></DialogHeader><NewSaleForm onDone={() => setOpen(false)} /></DialogContent></Dialog>
-    <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}><DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto"><DialogHeader><DialogTitle>{selected?.endsWith(":edit") ? "Editar venda" : "Detalhes da venda"}</DialogTitle></DialogHeader>{selected && selected.endsWith(":edit") ? <EditSaleForm sale={sales.find((s) => s.id === selected.replace(":edit",""))!} onDone={()=>setSelected(null)} /> : selected && <SaleDetails sale={sales.find((s) => s.id === selected)!} onCancel={() => { cancelSale(selected); setSelected(null); }} />}</DialogContent></Dialog>
+    <Dialog open={!!exchangeSaleId} onOpenChange={(v) => !v && setExchangeSaleId(null)}><DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>Troca / devolução vinculada à venda</DialogTitle></DialogHeader>{exchangeSaleId && <ExchangeForm sale={sales.find((s) => s.id === exchangeSaleId)!} onDone={() => setExchangeSaleId(null)} />}</DialogContent></Dialog>\n    <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}><DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto"><DialogHeader><DialogTitle>{selected?.endsWith(":edit") ? "Editar venda" : "Detalhes da venda"}</DialogTitle></DialogHeader>{selected && selected.endsWith(":edit") ? <EditSaleForm sale={sales.find((s) => s.id === selected.replace(":edit",""))!} onDone={()=>setSelected(null)} /> : selected && <SaleDetails sale={sales.find((s) => s.id === selected)!} onCancel={() => { cancelSale(selected); setSelected(null); }} onExchange={() => setExchangeSaleId(selected!)} />}</DialogContent></Dialog>
   </section>;
 }
 
@@ -88,8 +89,8 @@ function NewSaleForm({ onDone }: { onDone: () => void }) {
   </div>;
 }
 
-function SaleDetails({ sale, onCancel }: { sale: any; onCancel: () => void }) {
-  return <div className="space-y-4 text-sm"><div className="grid grid-cols-2 gap-3"><div><span className="text-muted-foreground">Venda</span><p className="font-bold">#{sale.number}</p></div><div><span className="text-muted-foreground">Data</span><p>{dateTime(sale.date)}</p></div><div><span className="text-muted-foreground">Cliente</span><p>{sale.customerName}</p></div><div><span className="text-muted-foreground">Pagamento</span><p>{sale.paymentMethod}</p></div></div><div className="rounded-xl bg-muted p-3">{sale.items.map((i: SaleItem) => <div key={i.id} className="flex justify-between border-b py-2 last:border-0"><span>{i.productName} — {i.color}/{i.size} x{i.quantity}</span><b>{brl(i.total)}</b></div>)}</div><div className="flex justify-between text-lg"><span>Total</span><b>{brl(sale.total)}</b></div><Button variant="destructive" onClick={onCancel}>Cancelar venda e estornar estoque</Button></div>;
+function SaleDetails({ sale, onCancel, onExchange }: { sale: any; onCancel: () => void; onExchange: () => void }) {
+  return <div className="space-y-4 text-sm"><div className="grid grid-cols-2 gap-3"><div><span className="text-muted-foreground">Venda</span><p className="font-bold">#{sale.number}</p></div><div><span className="text-muted-foreground">Data</span><p>{dateTime(sale.date)}</p></div><div><span className="text-muted-foreground">Cliente</span><p>{sale.customerName}</p></div><div><span className="text-muted-foreground">Pagamento</span><p>{sale.paymentMethod}</p></div></div><div className="rounded-xl bg-muted p-3">{sale.items.map((i: SaleItem) => <div key={i.id} className="flex justify-between border-b py-2 last:border-0"><span>{i.productName} — {i.color}/{i.size} x{i.quantity}</span><b>{brl(i.total)}</b></div>)}</div><div className="flex justify-between text-lg"><span>Total</span><b>{brl(sale.total)}</b></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={onExchange}><Repeat2 className="mr-2 h-4 w-4" />Registrar troca / devolução</Button><Button variant="destructive" onClick={onCancel}>Cancelar venda e estornar estoque</Button></div></div>;
 }
 
 
@@ -98,4 +99,35 @@ function EditSaleForm({ sale, onDone }: { sale: any; onDone: () => void }) {
   const [customerId,setCustomerId]=useState(sale.customerId||""); const [method,setMethod]=useState<SalePaymentMethod>(sale.paymentMethod); const [discount,setDiscount]=useState(sale.discount); const [paid,setPaid]=useState(sale.amountPaid); const [dueDate,setDueDate]=useState(sale.dueDate||""); const [notes,setNotes]=useState(sale.notes||"");
   const submit=()=>{ const subtotal=sale.subtotal; const total=Math.max(0,subtotal-discount); const ok=updateSale(sale.id,{customerId:customerId||null,customerName:customers.find(c=>c.id===customerId)?.name||"Consumidor não identificado",seller:sale.seller,store,items:sale.items,subtotal,discount,total,paymentMethod:method,amountPaid:method==="Ficha (AV)"?Math.min(paid,total):Math.max(paid,total),change:Math.max(0,paid-total),dueDate:method==="Ficha (AV)"?(dueDate||null):null,notes}); if(ok) onDone(); };
   return <div className="space-y-4"><div><Label>Cliente</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={customerId} onChange={e=>setCustomerId(e.target.value)}><option value="">Consumidor não identificado</option>{customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div><div className="rounded-xl bg-muted p-3">{sale.items.map((i: SaleItem)=><div key={i.id} className="flex justify-between py-2"><span>{i.productName} — {i.color}/{i.size} x{i.quantity}</span><b>{brl(i.total)}</b></div>)}</div><div className="grid gap-3 sm:grid-cols-2"><div><Label>Desconto</Label><Input type="number" value={discount} onChange={e=>setDiscount(Number(e.target.value)||0)}/></div><div><Label>Pagamento</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={method} onChange={e=>setMethod(e.target.value as SalePaymentMethod)}>{methods.map(m=><option key={m}>{m}</option>)}</select></div><div><Label>Valor pago</Label><Input type="number" value={paid} onChange={e=>setPaid(Number(e.target.value)||0)}/></div><div><Label>Vencimento</Label><Input type="date" value={dueDate} onChange={e=>setDueDate(e.target.value)}/></div></div><div><Label>Observações</Label><textarea className="mt-1 min-h-20 w-full rounded-md border bg-background p-3" value={notes} onChange={e=>setNotes(e.target.value)}/></div><Button className="w-full" onClick={submit}>Salvar alterações</Button></div>;
+}
+
+
+function ExchangeForm({ sale, onDone }: { sale: any; onDone: () => void }) {
+  const { products, restock } = useStore();
+  const [returnedId, setReturnedId] = useState("");
+  const [returnedQty, setReturnedQty] = useState(1);
+  const [replacementId, setReplacementId] = useState("");
+  const [replacementQty, setReplacementQty] = useState(1);
+  const [difference, setDifference] = useState(0);
+  const [notes, setNotes] = useState("");
+  const returned = sale.items.find((i: SaleItem) => i.id === returnedId);
+  const replacement = sale.items.find((i: SaleItem) => i.id === replacementId);
+  const submit = () => {
+    if (!returned || returnedQty < 1 || returnedQty > returned.quantity) return;
+    const key = `modah:exchange:${sale.id}`;
+    const previous = (() => { try { return JSON.parse(window.localStorage.getItem(key) || "[]"); } catch { return []; } })();
+    const record = { id: crypto.randomUUID(), date: new Date().toISOString(), saleId: sale.id, saleNumber: sale.number, returned: { productId: returned.productId, productName: returned.productName, color: returned.color, size: returned.size, quantity: returnedQty }, replacement: replacement ? { productId: replacement.productId, productName: replacement.productName, color: replacement.color, size: replacement.size, quantity: replacementQty } : null, difference: Number(difference) || 0, notes };
+    window.localStorage.setItem(key, JSON.stringify([record, ...previous]));
+    restock(returned.productId, returned.color, returned.size, returnedQty);
+    onDone();
+  };
+  return <div className="space-y-4">
+    <div className="rounded-xl bg-muted p-4"><p className="text-xs text-muted-foreground">Venda</p><p className="font-bold">#{sale.number} · {sale.customerName}</p><p className="text-xs text-muted-foreground">{dateTime(sale.date)}</p></div>
+    <div><Label>Produto devolvido</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={returnedId} onChange={e=>setReturnedId(e.target.value)}><option value="">Selecione um item da venda...</option>{sale.items.map((i: SaleItem)=><option key={i.id} value={i.id}>{i.productName} — {i.color}/{i.size} · {i.quantity} un.</option>)}</select></div>
+    {returned && <div><Label>Quantidade devolvida</Label><Input type="number" min="1" max={returned.quantity} value={returnedQty} onChange={e=>setReturnedQty(Math.max(1,Number(e.target.value)||1))}/></div>}
+    <div><Label>Produto da troca (opcional)</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={replacementId} onChange={e=>setReplacementId(e.target.value)}><option value="">Sem produto de troca</option>{products.filter(p=>!p.details?.inactive).flatMap(p=>p.variations.filter(v=>v.qty>0).map(v=><option key={p.id+"|"+v.color+"|"+v.size} value={sale.items.find(i=>i.productId===p.id&&i.color===v.color&&i.size===v.size)?.id || ""}>{p.name} — {v.color}/{v.size} ({v.qty})</option>))}</select></div>
+    <div className="grid gap-3 sm:grid-cols-2"><div><Label>Quantidade da troca</Label><Input type="number" min="1" value={replacementQty} onChange={e=>setReplacementQty(Math.max(1,Number(e.target.value)||1))}/></div><div><Label>Diferença a pagar/devolver</Label><Input type="number" value={difference} onChange={e=>setDifference(Number(e.target.value)||0)}/></div></div>
+    <div><Label>Observações</Label><textarea className="mt-1 min-h-20 w-full rounded-md border bg-background p-3" value={notes} onChange={e=>setNotes(e.target.value)}/></div>
+    <Button className="w-full" onClick={submit}>Registrar troca</Button>
+  </div>;
 }
