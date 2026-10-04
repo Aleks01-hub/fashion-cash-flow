@@ -32,7 +32,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [sales, setSales] = useState<Sale[]>(() => { try { return JSON.parse(typeof window !== "undefined" ? window.localStorage.getItem("modah:sales") || "null" : "null") ?? seedSales; } catch { return seedSales; } });
   const [store, setStore] = useState<string>(stores[0]!);
   const [online, setOnline] = useState(true);
-  const [feed, setFeed] = useState<{ id: string; text: string; at: string }[]>([]);\n\n  useEffect(() => { window.localStorage.setItem("modah:products", JSON.stringify(products)); }, [products]);\n  useEffect(() => { window.localStorage.setItem("modah:customers", JSON.stringify(customers)); }, [customers]);\n  useEffect(() => { window.localStorage.setItem("modah:sales", JSON.stringify(sales)); }, [sales]);
+  const [feed, setFeed] = useState<{ id: string; text: string; at: string }[]>([]);
+
+  useEffect(() => { window.localStorage.setItem("modah:products", JSON.stringify(products)); }, [products]);
+  useEffect(() => { window.localStorage.setItem("modah:customers", JSON.stringify(customers)); }, [customers]);
+  useEffect(() => { window.localStorage.setItem("modah:sales", JSON.stringify(sales)); }, [sales]);
 
   const push = useCallback((text: string) => {
     const entry = { id: crypto.randomUUID(), text, at: new Date().toISOString() };
