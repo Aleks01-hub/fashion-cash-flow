@@ -32,6 +32,38 @@ export function CustomerLedger({ customer, onBack, onEdit }: { customer: Custome
   const late = customerStatus(customer) === "atraso";
   const value = Number(amount.replace(",", ".")) || 0;
 
+  const exportText = useMemo(() => {
+    const situacao = quitada ? "Quitada" : late ? "Em atraso" : "Em dia";
+    const lines: string[] = [
+      `FICHA DO CLIENTE — ${customer.name}`,
+      `Telefone: ${customer.whatsapp}`,
+      `Situação: ${situacao}`,
+      customer.notes ? `Obs: ${customer.notes}` : "",
+      "",
+      "LANÇAMENTOS",
+      ...rows.flatMap((r) => {
+        const mark = r.first ? "T=" : r.kind === "compra" ? "+" : "−";
+        const base = `${mark} ${brl(r.amount)} (${dateTime(r.date)}) ${r.label}`;
+        return r.first ? [base] : [base, `${r.kind === "compra" ? "T=" : "R="} ${brl(r.result)}`];
+      }),
+      "",
+      `TOTAL DEVEDOR: ${brl(balance)}`,
+    ].filter((l) => l !== "");
+    return lines.join("\n");
+  }, [customer, rows, balance, quitada, late]);
+
+  const downloadLedger = () => {
+    const blob = new Blob([exportText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ficha-${customer.name.toLowerCase().replace(/\s+/g, "-")}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const whatsappShare = `https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(exportText)}`;
+
   return (
     <section className="card-elevated rounded-2xl p-4 md:p-6">
       <Button variant="ghost" size="sm" onClick={onBack} className="mb-2">
