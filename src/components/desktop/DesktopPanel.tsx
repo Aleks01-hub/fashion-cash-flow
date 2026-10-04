@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, BarChart3, Boxes, LayoutDashboard, MessageCircle, Radio, Users, Menu, ShoppingBag, X, Package, Wallet as WalletIcon } from "lucide-react";
+import { AlertTriangle, BarChart3, Boxes, LayoutDashboard, MessageCircle, Radio, Users, Menu, ShoppingBag, X, Package, Wallet as WalletIcon, Cake } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,15 @@ export function DesktopPanel() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [newCustomerOpen, setNewCustomerOpen] = useState(false);
   const selected = customers.find((c) => c.id === selectedId) ?? null;
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const id = (event as CustomEvent<string>).detail;
+      if (id) openCustomer(id);
+    };
+    window.addEventListener("modah:open-customer", handler);
+    return () => window.removeEventListener("modah:open-customer", handler);
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => toast("Monitor em tempo real", { description: "Sistema pronto para registrar vendas e movimentações." }), 2500);
@@ -98,7 +107,9 @@ function Metric({ label, value, icon: Icon, tone }: { label: string; value: stri
 type SalesList = ReturnType<typeof useStore>["sales"];
 type CustomerList = ReturnType<typeof useStore>["customers"];
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+import type { ReactNode } from "react";
+
+function ChartCard({ title, children }: { title: string; children: ReactNode }) {
   return <section className="card-elevated rounded-2xl p-4">
     <h2 className="mb-4 font-bold">{title}</h2>
     <div className="h-72 w-full">{children}</div>
@@ -187,5 +198,6 @@ function SalesTrendChart({ sales }: { sales: SalesList }) {
 
 function MiniCalendar({ customers }: { customers: CustomerList }) {
   const due = customers.filter((c) => c.av && c.av.balance > 0).sort((a, b) => a.av!.dueDate.localeCompare(b.av!.dueDate));
-  return <section className="card-elevated rounded-2xl p-4"><h2 className="mb-3 font-bold">Próximos vencimentos</h2>{due.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma ficha em aberto.</p> : <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{due.map((c) => <div key={c.id} className="flex items-center justify-between rounded-xl bg-muted p-3 text-sm"><span className="truncate">{c.name}</span><StatusBadge tone={customerStatus(c) === "atraso" ? "danger" : "warning"}>{dateOnly(c.av!.dueDate)}</StatusBadge></div>)}</div>}</section>;
+  const open = (id: string) => { window.dispatchEvent(new CustomEvent("modah:open-customer", { detail: id })); };
+  return <section className="card-elevated rounded-2xl p-4"><h2 className="mb-3 font-bold">Próximos vencimentos</h2>{due.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma ficha em aberto.</p> : <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{due.map((c) => <button key={c.id} onClick={() => open(c.id)} className="flex items-center justify-between rounded-xl bg-muted p-3 text-left text-sm transition hover:bg-accent"><span className="truncate font-medium text-primary">{c.name}</span><StatusBadge tone={customerStatus(c) === "atraso" ? "danger" : "warning"}>{dateOnly(c.av!.dueDate)}</StatusBadge></button>)}</div>}<p className="mt-2 text-xs text-muted-foreground">Clique em um vencimento para abrir a ficha do cliente.</p></section>;
 }
