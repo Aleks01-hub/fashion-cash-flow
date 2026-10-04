@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, Ban, Pencil, Plus, Search, Wallet } from "lucide-react";
+import { ArrowLeft, Ban, Download, Pencil, Plus, Search, Send, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -174,6 +174,39 @@ export function CustomerDetail({ customer, onBack }: { customer: Customer; onBac
   const [method, setMethod] = useState(METHODS[0]!);
   const [edit, setEdit] = useState(customer);
 
+  const exportText = useMemo(() => {
+    const status = st === "atraso" ? "Em atraso" : "Em dia";
+    const lines = [
+      `FICHA DO CLIENTE — ${customer.name}`,
+      `WhatsApp: ${customer.whatsapp}`,
+      `CPF: ${customer.cpf || "Não informado"}`,
+      `Endereço: ${customer.address || "Não informado"}`,
+      `Tamanho preferido: ${customer.preferredSize}`,
+      `Situação: ${status}`,
+      `Saldo devedor: ${brl(customer.av?.balance ?? 0)}`,
+      customer.av ? `Vencimento: ${dateOnly(customer.av.dueDate)}` : "",
+      "",
+      "HISTÓRICO DE COMPRAS",
+      ...customer.purchases.map((p) => `- ${p.items} | ${brl(p.price)} | ${dateTime(p.date)} | ${p.method}`),
+      "",
+      "PAGAMENTOS / ABATIMENTOS",
+      ...customer.payments.map((p) => `- ${brl(p.amount)} | ${p.method} | ${dateTime(p.date)} | Saldo após: ${brl(p.balanceAfter)}`),
+    ].filter(Boolean);
+    return lines.join("\n");
+  }, [customer, st]);
+
+  const downloadCustomerFile = () => {
+    const blob = new Blob([exportText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ficha-${customer.name.toLowerCase().replace(/\\s+/g, "-")}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const whatsappShare = `https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(exportText)}`;
+
   return (
     <div className="space-y-4 px-4 pb-28 pt-4">
       <button onClick={onBack} className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -189,6 +222,16 @@ export function CustomerDetail({ customer, onBack }: { customer: Customer; onBac
           <StatusBadge tone={st === "atraso" ? "danger" : "success"}>
             {st === "atraso" ? "Ficha Em Atraso" : "Ficha Em Dia"}
           </StatusBadge>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Button variant="outline" onClick={downloadCustomerFile}>
+            <Download className="h-4 w-4" /> Baixar ficha
+          </Button>
+          <Button asChild variant="outline">
+            <a href={whatsappShare} target="_blank" rel="noreferrer">
+              <Send className="h-4 w-4" /> WhatsApp
+            </a>
+          </Button>
         </div>
         <dl className="mt-3 space-y-1 text-sm">
           <div className="flex justify-between gap-3">
