@@ -65,7 +65,7 @@ export function QuickSaleScreen() {
   const [dueDate, setDueDate] = useState("");
   const [newCustomerOpen, setNewCustomerOpen] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: "", whatsapp: "" });
-  const [cartOpen, setCartOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);\n  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const selectedCustomer = customers.find((c) => c.id === selectedCustomerId) ?? null;
   const activeProducts = useMemo(() => products.filter((p) => !p.details?.inactive), [products]);
@@ -422,6 +422,79 @@ export function QuickSaleScreen() {
           <span className="text-left"><span className="block text-[11px] text-muted-foreground">Carrinho</span><span className="block text-base font-black">{brl(total)}</span></span>
         </button>
       )}
+
+      <Dialog open={Boolean(selectedProduct)} onOpenChange={(open) => !open && setSelectedProduct(null)}>
+        <DialogContent className="max-h-[88vh] max-w-md overflow-y-auto rounded-2xl p-0">
+          {selectedProduct && (
+            <>
+              <div className="relative">
+                <img src={selectedProduct.photo} alt={selectedProduct.name} className="h-64 w-full object-cover" />
+                <div className="absolute bottom-3 left-3 rounded-full bg-background/90 px-3 py-1 text-xs font-medium backdrop-blur">
+                  {selectedProduct.category}
+                </div>
+              </div>
+              <div className="space-y-4 p-5">
+                <DialogHeader className="text-left">
+                  <DialogTitle className="text-xl">{selectedProduct.name}</DialogTitle>
+                  <p className="text-2xl font-black text-primary">{brl(selectedProduct.price)}</p>
+                </DialogHeader>
+
+                {selectedProduct.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedProduct.tags.map((tag) => (
+                      <span key={tag} className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium">#{tag}</span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl bg-muted p-3">
+                    <p className="text-[11px] text-muted-foreground">Estoque total</p>
+                    <p className="mt-1 text-lg font-bold">{selectedProduct.variations.reduce((n, v) => n + available(v), 0)} un</p>
+                  </div>
+                  <div className="rounded-xl bg-muted p-3">
+                    <p className="text-[11px] text-muted-foreground">Estoque mínimo</p>
+                    <p className="mt-1 text-lg font-bold">{selectedProduct.minStock} un</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-sm font-bold">Informações</p>
+                  <div className="space-y-2 rounded-xl border border-border p-3 text-xs">
+                    {selectedProduct.details?.brand && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Marca</span><span className="font-medium text-right">{selectedProduct.details.brand}</span></div>}
+                    {selectedProduct.details?.reference && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Referência</span><span className="font-medium text-right">{selectedProduct.details.reference}</span></div>}
+                    {selectedProduct.details?.barcode && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Código de barras</span><span className="font-medium text-right">{selectedProduct.details.barcode}</span></div>}
+                    {selectedProduct.details?.unit && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Unidade</span><span className="font-medium text-right">{selectedProduct.details.unit}</span></div>}
+                    {selectedProduct.details?.supplier && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Fornecedor</span><span className="font-medium text-right">{selectedProduct.details.supplier}</span></div>}
+                    {selectedProduct.details?.location && <div className="flex justify-between gap-3"><span className="text-muted-foreground">Localização</span><span className="font-medium text-right">{selectedProduct.details.location}</span></div>}
+                    {selectedProduct.details?.notes && <div className="border-t pt-2"><span className="text-muted-foreground">Observações</span><p className="mt-1 font-medium">{selectedProduct.details.notes}</p></div>}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-sm font-bold">Cores e tamanhos</p>
+                  <div className="space-y-2">
+                    {selectedProduct.variations.map((v) => {
+                      const qty = available(v);
+                      return (
+                        <button key={v.color + "|" + v.size} type="button" disabled={qty <= 0} onClick={() => addVariation(selectedProduct, v)} className="flex w-full items-center justify-between rounded-xl border border-border p-3 text-left disabled:opacity-40">
+                          <div>
+                            <p className="text-sm font-medium">{v.color} · {v.size}</p>
+                            <p className="text-[11px] text-muted-foreground">{qty > 0 ? qty + " disponível(is)" : "Sem estoque"}</p>
+                          </div>
+                          <span className="flex items-center gap-1 text-xs font-semibold text-primary"><Plus className="h-4 w-4" /> Adicionar</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <Button className="w-full rounded-xl" variant="outline" onClick={() => setSelectedProduct(null)}>Fechar</Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={cartOpen} onOpenChange={setCartOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
