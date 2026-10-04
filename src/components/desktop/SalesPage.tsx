@@ -1,133 +1,90 @@
-import { useMemo, useState } from "react";
-import { Edit, Eye, Plus, Search, X, Repeat2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Edit, Eye, Plus, Search, X, Repeat2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useStore } from "@/lib/store";
-import type { SaleItem, SalePaymentMethod } from "@/lib/mock-data";
+import type { SaleItem, SalePaymentMethod, Product } from "@/lib/mock-data";
 import { brl, dateTime } from "@/lib/format";
 
 const methods: SalePaymentMethod[] = ["Pix", "Dinheiro", "Cartão Débito", "Cartão Crédito", "Ficha (AV)"];
+const variationKey=(productId:string,color:string,size:string)=>productId+"|"+color+"|"+size;
 
 export function SalesPage() {
-  const { sales, products, customers, store, createSale, updateSale, cancelSale } = useStore();
+  const { sales, createSale, updateSale, cancelSale } = useStore();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [exchangeSaleId, setExchangeSaleId] = useState<string | null>(null);
-
   const filtered = useMemo(() => sales.filter((s) => {
     const q = search.toLowerCase();
     return !q || String(s.number).includes(q) || s.customerName.toLowerCase().includes(q) || s.paymentMethod.toLowerCase().includes(q);
   }), [sales, search]);
-
   return <section className="space-y-4">
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><h2 className="text-xl font-bold">Histórico de vendas</h2><p className="text-sm text-muted-foreground">Consulte, abra e registre novas vendas.</p></div>
-      <Button onClick={() => setOpen(true)}><Plus className="mr-2 h-4 w-4" /> Nova venda</Button>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-bold">Histórico de vendas</h2><p className="text-sm text-muted-foreground">Consulte, edite, troque ou estorne vendas.</p></div><Button onClick={()=>setOpen(true)}><Plus className="mr-2 h-4 w-4"/>Nova venda</Button></div>
+    <div className="card-elevated rounded-2xl p-4"><div className="mb-4 flex items-center gap-2"><Search className="h-4 w-4 text-muted-foreground"/><Input placeholder="Buscar por número, cliente ou pagamento..." value={search} onChange={e=>setSearch(e.target.value)}/></div>
+      <div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b text-left text-muted-foreground"><th className="p-3">Venda</th><th className="p-3">Data</th><th className="p-3">Cliente</th><th className="p-3">Itens</th><th className="p-3">Pagamento</th><th className="p-3">Total</th><th className="p-3"></th></tr></thead>
+      <tbody>{filtered.map(s=><tr key={s.id} className="border-b last:border-0"><td className="p-3 font-semibold">#{s.number}</td><td className="p-3">{dateTime(s.date)}</td><td className="p-3">{s.customerName}</td><td className="p-3">{s.items.reduce((n,i)=>n+i.quantity,0)} peça(s)</td><td className="p-3">{s.paymentMethod}</td><td className="p-3 font-bold">{brl(s.total)}</td><td className="p-3 flex gap-1"><Button size="icon" variant="ghost" onClick={()=>setSelected(s.id)} aria-label="Ver venda"><Eye className="h-4 w-4"/></Button><Button size="icon" variant="ghost" onClick={()=>setSelected(s.id+":edit")} aria-label="Editar venda"><Edit className="h-4 w-4"/></Button></td></tr>)}</tbody></table>{!filtered.length&&<p className="py-10 text-center text-sm text-muted-foreground">Nenhuma venda encontrada.</p>}</div>
     </div>
-    <div className="card-elevated rounded-2xl p-4">
-      <div className="mb-4 flex items-center gap-2"><Search className="h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar por número, cliente ou pagamento..." value={search} onChange={(e) => setSearch(e.target.value)} /></div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm"><thead><tr className="border-b text-left text-muted-foreground"><th className="p-3">Venda</th><th className="p-3">Data</th><th className="p-3">Cliente</th><th className="p-3">Itens</th><th className="p-3">Pagamento</th><th className="p-3">Total</th><th className="p-3"></th></tr></thead>
-        <tbody>{filtered.map((s) => <tr key={s.id} className="border-b last:border-0">
-          <td className="p-3 font-semibold">#{s.number}</td><td className="p-3">{dateTime(s.date)}</td><td className="p-3">{s.customerName}</td>
-          <td className="p-3">{s.items.reduce((n, i) => n + i.quantity, 0)} peça(s)</td><td className="p-3">{s.paymentMethod}</td><td className="p-3 font-bold">{brl(s.total)}</td>
-          <td className="p-3 flex gap-1"><Button size="icon" variant="ghost" onClick={() => setSelected(s.id)}><Eye className="h-4 w-4" /></Button><Button size="icon" variant="ghost" onClick={() => setSelected(s.id + ":edit")}><Edit className="h-4 w-4" /></Button></td>
-        </tr>)}</tbody></table>
-        {!filtered.length && <p className="py-10 text-center text-sm text-muted-foreground">Nenhuma venda encontrada.</p>}
-      </div>
-    </div>
-    <Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto"><DialogHeader><DialogTitle>Nova venda</DialogTitle></DialogHeader><NewSaleForm onDone={() => setOpen(false)} /></DialogContent></Dialog>
-    <Dialog open={!!exchangeSaleId} onOpenChange={(v) => !v && setExchangeSaleId(null)}><DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>Troca / devolução vinculada à venda</DialogTitle></DialogHeader>{exchangeSaleId && <ExchangeForm sale={sales.find((s) => s.id === exchangeSaleId)!} onDone={() => setExchangeSaleId(null)} />}</DialogContent></Dialog>\n    <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}><DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto"><DialogHeader><DialogTitle>{selected?.endsWith(":edit") ? "Editar venda" : "Detalhes da venda"}</DialogTitle></DialogHeader>{selected && selected.endsWith(":edit") ? <EditSaleForm sale={sales.find((s) => s.id === selected.replace(":edit",""))!} onDone={()=>setSelected(null)} /> : selected && <SaleDetails sale={sales.find((s) => s.id === selected)!} onCancel={() => { cancelSale(selected); setSelected(null); }} onExchange={() => setExchangeSaleId(selected!)} />}</DialogContent></Dialog>
+    <Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto"><DialogHeader><DialogTitle>Nova venda</DialogTitle></DialogHeader><NewSaleForm onDone={()=>setOpen(false)}/></DialogContent></Dialog>
+    <Dialog open={!!exchangeSaleId} onOpenChange={v=>!v&&setExchangeSaleId(null)}><DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>Troca / devolução vinculada à venda</DialogTitle></DialogHeader>{exchangeSaleId&&<ExchangeForm sale={sales.find(s=>s.id===exchangeSaleId)!} onDone={()=>setExchangeSaleId(null)}/>}</DialogContent></Dialog>
+    <Dialog open={!!selected} onOpenChange={v=>!v&&setSelected(null)}><DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto"><DialogHeader><DialogTitle>{selected?.endsWith(":edit")?"Editar venda":"Detalhes da venda"}</DialogTitle></DialogHeader>{selected&&selected.endsWith(":edit")?<EditSaleForm sale={sales.find(s=>s.id===selected.replace(":edit",""))!} onDone={()=>setSelected(null)}/>:selected&&<SaleDetails sale={sales.find(s=>s.id===selected)!} onCancel={()=>{cancelSale(selected);setSelected(null)}} onExchange={()=>setExchangeSaleId(selected)}/>}</DialogContent></Dialog>
   </section>;
 }
 
-function NewSaleForm({ onDone }: { onDone: () => void }) {
-  const { products, customers, store, createSale } = useStore();
-  const [customerId, setCustomerId] = useState("");
-  const [items, setItems] = useState<SaleItem[]>([]);
-  const [productId, setProductId] = useState("");
-  const [variationKey, setVariationKey] = useState("");
-  const [qty, setQty] = useState(1);
-  const [discount, setDiscount] = useState(0);
-  const [method, setMethod] = useState<SalePaymentMethod>("Pix");
-  const [amountPaid, setAmountPaid] = useState(0);
-  const [dueDate, setDueDate] = useState("");
-  const [notes, setNotes] = useState("");
-
-  const product = products.find((p) => p.id === productId);
-  const variation = product?.variations.find((v) => v.color + "|" + v.size === variationKey);
-  const subtotal = items.reduce((s, i) => s + i.total, 0);
-  const total = Math.max(0, subtotal - discount);
-  const change = Math.max(0, amountPaid - total);
-
-  const addItem = () => {
-    if (!product || !variation || qty < 1) return;
-    if (variation.qty < qty) return;
-    const item: SaleItem = { id: crypto.randomUUID(), productId: product.id, productName: product.name, color: variation.color, size: variation.size, quantity: qty, unitPrice: product.price, discount: 0, total: product.price * qty };
-    setItems((prev) => [...prev, item]); setProductId(""); setVariationKey(""); setQty(1);
-  };
-
-  const submit = () => {
-    if (!items.length || total <= 0) return;
-    const customer = customers.find((c) => c.id === customerId);
-    const paid = method === "Ficha (AV)" ? Math.min(amountPaid, total) : Math.max(amountPaid, total);
-    const ok = createSale({ customerId: customer?.id ?? null, customerName: customer?.name ?? "Consumidor não identificado", seller: "Alex", store, items, subtotal, discount, total, paymentMethod: method, amountPaid: paid, change, dueDate: method === "Ficha (AV)" ? (dueDate || null) : null, notes });
-    if (ok) onDone();
-  };
-
-  return <div className="grid gap-5 lg:grid-cols-[1.4fr_0.8fr]">
-    <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2"><div><Label>Cliente</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={customerId} onChange={(e) => setCustomerId(e.target.value)}><option value="">Consumidor não identificado</option>{customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div><div><Label>Forma de pagamento</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={method} onChange={(e) => setMethod(e.target.value as SalePaymentMethod)}>{methods.map((m) => <option key={m}>{m}</option>)}</select></div></div>
-      <div className="rounded-xl border p-4"><h3 className="mb-3 font-semibold">Adicionar produto</h3><div className="grid gap-3 sm:grid-cols-[1.2fr_1fr_90px_auto] sm:items-end"><div><Label>Produto</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={productId} onChange={(e) => { setProductId(e.target.value); setVariationKey(""); }}>{<option value="">Selecione...</option>}{products.filter(p => !p.details?.inactive).map(p => <option key={p.id} value={p.id}>{p.name} — {brl(p.price)}</option>)}</select></div><div><Label>Cor / tamanho</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={variationKey} onChange={(e) => setVariationKey(e.target.value)} disabled={!product}><option value="">Selecione...</option>{product?.variations.filter(v => v.qty > 0).map(v => <option key={v.color + "|" + v.size} value={v.color + "|" + v.size}>{v.color} / {v.size} ({v.qty})</option>)}</select></div><div><Label>Qtd.</Label><Input className="mt-1" type="number" min="1" value={qty} onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))} /></div><Button onClick={addItem}>Adicionar</Button></div></div>
-      <div className="space-y-2">{items.map((i) => <div key={i.id} className="flex items-center justify-between rounded-xl bg-muted p-3"><div><p className="font-medium">{i.productName}</p><p className="text-xs text-muted-foreground">{i.color} / {i.size} · {i.quantity}x</p></div><div className="flex items-center gap-3"><b>{brl(i.total)}</b><Button variant="ghost" size="icon" onClick={() => setItems(items.filter(x => x.id !== i.id))}><X className="h-4 w-4" /></Button></div></div>)}</div>
-      <div><Label>Observações</Label><textarea className="mt-1 min-h-20 w-full rounded-md border bg-background p-3 text-sm" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Observações da venda..." /></div>
-    </div>
-    <div className="h-fit space-y-4 rounded-2xl border p-4"><h3 className="font-bold">Resumo</h3><div className="flex justify-between text-sm"><span>Subtotal</span><b>{brl(subtotal)}</b></div><div><Label>Desconto</Label><Input type="number" min="0" value={discount} onChange={(e) => setDiscount(Math.max(0, Number(e.target.value) || 0))} /></div><div className="flex justify-between border-t pt-3 text-lg"><span>Total</span><b>{brl(total)}</b></div>{method === "Ficha (AV)" && <><div><Label>Valor pago agora</Label><Input type="number" min="0" value={amountPaid} onChange={(e) => setAmountPaid(Math.max(0, Number(e.target.value) || 0))} /></div><div><Label>Vencimento</Label><Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></div></>}{method !== "Ficha (AV)" && <div><Label>Valor recebido</Label><Input type="number" min={total} value={amountPaid || total} onChange={(e) => setAmountPaid(Math.max(total, Number(e.target.value) || total))} /></div>}{method !== "Ficha (AV)" && <div className="flex justify-between text-sm"><span>Troco</span><b>{brl(change)}</b></div>}<Button className="w-full" size="lg" onClick={submit}>Finalizar venda</Button></div>
-  </div>;
+function NewSaleForm({onDone}:{onDone:()=>void}){
+  const {products,customers,store,createSale}=useStore();
+  const [customerId,setCustomerId]=useState(""); const [items,setItems]=useState<SaleItem[]>([]); const [productId,setProductId]=useState(""); const [variation,setVariation]=useState(""); const [qty,setQty]=useState(1); const [discount,setDiscount]=useState(0); const [method,setMethod]=useState<SalePaymentMethod>("Pix"); const [paid,setPaid]=useState(0); const [dueDate,setDueDate]=useState(""); const [notes,setNotes]=useState("");
+  const product=products.find(p=>p.id===productId); const selectedVariation=product?.variations.find(v=>v.color+"|"+v.size===variation); const subtotal=items.reduce((n,i)=>n+i.total,0); const total=Math.max(0,subtotal-discount);
+  const addItem=()=>{if(!product||!selectedVariation||qty<1)return;const key=variationKey(product.id,selectedVariation.color,selectedVariation.size);const used=items.filter(i=>variationKey(i.productId,i.color,i.size)===key).reduce((n,i)=>n+i.quantity,0);if(selectedVariation.qty-used<qty)return;const current=items.find(i=>variationKey(i.productId,i.color,i.size)===key);setItems(current?items.map(i=>i.id===current.id?{...i,quantity:i.quantity+qty,total:(i.quantity+qty)*i.unitPrice}:i):[...items,{id:crypto.randomUUID(),productId:product.id,productName:product.name,color:selectedVariation.color,size:selectedVariation.size,quantity:qty,unitPrice:product.price,discount:0,total:product.price*qty}]);setProductId("");setVariation("");setQty(1)};
+  const submit=()=>{if(!items.length||total<=0)return;const customer=customers.find(c=>c.id===customerId);const amountPaid=method==="Ficha (AV)"?Math.min(paid,total):Math.max(paid,total);const ok=createSale({customerId:customer?.id??null,customerName:customer?.name??"Consumidor não identificado",seller:"Alex",store,items,subtotal,discount,total,paymentMethod:method,amountPaid,change:Math.max(0,amountPaid-total),dueDate:method==="Ficha (AV)"?(dueDate||null):null,notes});if(ok)onDone()};
+  return <SaleEditorLayout products={products}items={items}setItems={setItems}productId={productId}setProductId={setProductId}variation={variation}setVariation={setVariation}qty={qty}setQty={setQty}onAdd={addItem}customerId={customerId}setCustomerId={setCustomerId}customers={customers}method={method}setMethod={setMethod}discount={discount}setDiscount={setDiscount}paid={paid}setPaid={setPaid}dueDate={dueDate}setDueDate={setDueDate}notes={notes}setNotes={setNotes}subtotal={subtotal}total={total}onSubmit={submit}submitLabel="Finalizar venda" />
 }
 
-function SaleDetails({ sale, onCancel, onExchange }: { sale: any; onCancel: () => void; onExchange: () => void }) {
-  return <div className="space-y-4 text-sm"><div className="grid grid-cols-2 gap-3"><div><span className="text-muted-foreground">Venda</span><p className="font-bold">#{sale.number}</p></div><div><span className="text-muted-foreground">Data</span><p>{dateTime(sale.date)}</p></div><div><span className="text-muted-foreground">Cliente</span><p>{sale.customerName}</p></div><div><span className="text-muted-foreground">Pagamento</span><p>{sale.paymentMethod}</p></div></div><div className="rounded-xl bg-muted p-3">{sale.items.map((i: SaleItem) => <div key={i.id} className="flex justify-between border-b py-2 last:border-0"><span>{i.productName} — {i.color}/{i.size} x{i.quantity}</span><b>{brl(i.total)}</b></div>)}</div><div className="flex justify-between text-lg"><span>Total</span><b>{brl(sale.total)}</b></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={onExchange}><Repeat2 className="mr-2 h-4 w-4" />Registrar troca / devolução</Button><Button variant="destructive" onClick={onCancel}>Cancelar venda e estornar estoque</Button></div></div>;
+function SaleEditorLayout(p:{products:Product[];items:SaleItem[];setItems:(x:SaleItem[])=>void;productId:string;setProductId:(x:string)=>void;variation:string;setVariation:(x:string)=>void;qty:number;setQty:(x:number)=>void;onAdd:()=>void;customerId:string;setCustomerId:(x:string)=>void;customers:ReturnType<typeof useStore>["customers"];method:SalePaymentMethod;setMethod:(x:SalePaymentMethod)=>void;discount:number;setDiscount:(x:number)=>void;paid:number;setPaid:(x:number)=>void;dueDate:string;setDueDate:(x:string)=>void;notes:string;setNotes:(x:string)=>void;subtotal:number;total:number;onSubmit:()=>void;submitLabel:string}){
+  const product=p.products.find(x=>x.id===p.productId);
+  return <div className="grid gap-5 lg:grid-cols-[1.4fr_0.8fr]"><div className="space-y-4">
+    <div className="grid gap-3 sm:grid-cols-2"><div><Label>Cliente</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={p.customerId} onChange={e=>p.setCustomerId(e.target.value)}><option value="">Consumidor não identificado</option>{p.customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div><div><Label>Forma de pagamento</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={p.method} onChange={e=>p.setMethod(e.target.value as SalePaymentMethod)}>{methods.map(m=><option key={m}>{m}</option>)}</select></div></div>
+    <div className="rounded-xl border p-4"><h3 className="mb-3 font-semibold">Adicionar produto</h3><div className="grid gap-3 sm:grid-cols-[1.3fr_1fr_90px_auto] sm:items-end"><div><Label>Produto</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={p.productId} onChange={e=>{p.setProductId(e.target.value);p.setVariation("")}}><option value="">Selecione...</option>{p.products.filter(x=>!x.details?.inactive).map(x=><option key={x.id} value={x.id}>{x.name} — {brl(x.price)}</option>)}</select></div><div><Label>Cor / tamanho</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm" value={p.variation} onChange={e=>p.setVariation(e.target.value)} disabled={!product}><option value="">Selecione...</option>{product?.variations.filter(v=>v.qty>0).map(v=><option key={v.color+"|"+v.size} value={v.color+"|"+v.size}>{v.color} / {v.size} ({v.qty})</option>)}</select></div><div><Label>Qtd.</Label><Input type="number" min="1" value={p.qty} onChange={e=>p.setQty(Math.max(1,Number(e.target.value)||1))}/></div><Button onClick={p.onAdd}>Adicionar</Button></div></div>
+    <div className="space-y-2">{p.items.map(i=><div key={i.id} className="flex items-center justify-between rounded-xl bg-muted p-3"><div><p className="font-medium">{i.productName}</p><p className="text-xs text-muted-foreground">{i.color} / {i.size} · {i.quantity}x · {brl(i.unitPrice)}/un.</p></div><div className="flex items-center gap-3"><b>{brl(i.total)}</b><Button variant="ghost" size="icon" onClick={()=>p.setItems(p.items.filter(x=>x.id!==i.id))}><Trash2 className="h-4 w-4"/></Button></div></div>)}</div>
+    <div><Label>Observações</Label><textarea className="mt-1 min-h-20 w-full rounded-md border bg-background p-3 text-sm" value={p.notes} onChange={e=>p.setNotes(e.target.value)}/></div></div>
+    <div className="h-fit space-y-4 rounded-2xl border p-4"><h3 className="font-bold">Resumo</h3><div className="flex justify-between text-sm"><span>Subtotal</span><b>{brl(p.subtotal)}</b></div><div><Label>Desconto</Label><Input type="number" min="0" value={p.discount} onChange={e=>p.setDiscount(Math.min(p.subtotal,Math.max(0,Number(e.target.value)||0)))}/></div><div className="flex justify-between border-t pt-3 text-lg"><span>Total</span><b>{brl(p.total)}</b></div>{p.method==="Ficha (AV)"&&<><div><Label>Valor pago agora</Label><Input type="number" min="0" max={p.total} value={p.paid} onChange={e=>p.setPaid(Math.min(p.total,Math.max(0,Number(e.target.value)||0)))}/></div><div><Label>Vencimento</Label><Input type="date" value={p.dueDate} onChange={e=>p.setDueDate(e.target.value)}/></div></>}{p.method!=="Ficha (AV)"&&<div><Label>Valor recebido</Label><Input type="number" min={p.total} value={p.paid||p.total} onChange={e=>p.setPaid(Math.max(p.total,Number(e.target.value)||p.total))}/><div className="mt-1 flex justify-between text-sm"><span>Troco</span><b>{brl(Math.max(0,p.paid-p.total))}</b></div></div>}<Button className="w-full" size="lg" onClick={p.onSubmit}>{p.submitLabel}</Button></div>
+  </div>
 }
 
-
-function EditSaleForm({ sale, onDone }: { sale: any; onDone: () => void }) {
-  const { products, customers, store, updateSale } = useStore();
-  const [customerId,setCustomerId]=useState(sale.customerId||""); const [method,setMethod]=useState<SalePaymentMethod>(sale.paymentMethod); const [discount,setDiscount]=useState(sale.discount); const [paid,setPaid]=useState(sale.amountPaid); const [dueDate,setDueDate]=useState(sale.dueDate||""); const [notes,setNotes]=useState(sale.notes||"");
-  const submit=()=>{ const subtotal=sale.subtotal; const total=Math.max(0,subtotal-discount); const ok=updateSale(sale.id,{customerId:customerId||null,customerName:customers.find(c=>c.id===customerId)?.name||"Consumidor não identificado",seller:sale.seller,store,items:sale.items,subtotal,discount,total,paymentMethod:method,amountPaid:method==="Ficha (AV)"?Math.min(paid,total):Math.max(paid,total),change:Math.max(0,paid-total),dueDate:method==="Ficha (AV)"?(dueDate||null):null,notes}); if(ok) onDone(); };
-  return <div className="space-y-4"><div><Label>Cliente</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={customerId} onChange={e=>setCustomerId(e.target.value)}><option value="">Consumidor não identificado</option>{customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div><div className="rounded-xl bg-muted p-3">{sale.items.map((i: SaleItem)=><div key={i.id} className="flex justify-between py-2"><span>{i.productName} — {i.color}/{i.size} x{i.quantity}</span><b>{brl(i.total)}</b></div>)}</div><div className="grid gap-3 sm:grid-cols-2"><div><Label>Desconto</Label><Input type="number" value={discount} onChange={e=>setDiscount(Number(e.target.value)||0)}/></div><div><Label>Pagamento</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={method} onChange={e=>setMethod(e.target.value as SalePaymentMethod)}>{methods.map(m=><option key={m}>{m}</option>)}</select></div><div><Label>Valor pago</Label><Input type="number" value={paid} onChange={e=>setPaid(Number(e.target.value)||0)}/></div><div><Label>Vencimento</Label><Input type="date" value={dueDate} onChange={e=>setDueDate(e.target.value)}/></div></div><div><Label>Observações</Label><textarea className="mt-1 min-h-20 w-full rounded-md border bg-background p-3" value={notes} onChange={e=>setNotes(e.target.value)}/></div><Button className="w-full" onClick={submit}>Salvar alterações</Button></div>;
+function SaleDetails({sale,onCancel,onExchange}:{sale:any;onCancel:()=>void;onExchange:()=>void}){
+  const {exchanges}=useStore(); const rows=exchanges.filter(e=>e.saleId===sale.id); const returned=new Map<string,number>(); rows.forEach(e=>returned.set(e.returned.saleItemId,(returned.get(e.returned.saleItemId)||0)+e.returned.quantity));
+  return <div className="space-y-4 text-sm"><div className="grid grid-cols-2 gap-3"><div><span className="text-muted-foreground">Venda</span><p className="font-bold">#{sale.number}</p></div><div><span className="text-muted-foreground">Data</span><p>{dateTime(sale.date)}</p></div><div><span className="text-muted-foreground">Cliente</span><p>{sale.customerName}</p></div><div><span className="text-muted-foreground">Pagamento</span><p>{sale.paymentMethod}</p></div></div>
+    <div className="rounded-xl bg-muted p-3">{sale.items.map((i:SaleItem)=>{const left=i.quantity-(returned.get(i.id)||0);return <div key={i.id} className="flex justify-between border-b py-2 last:border-0"><span>{i.productName} — {i.color}/{i.size} x{i.quantity}{left<i.quantity&&<span className="ml-2 text-xs text-warning">({left} disponível para devolução)</span>}</span><b>{brl(i.total)}</b></div>})}</div>
+    <div className="flex justify-between text-lg"><span>Total</span><b>{brl(sale.total)}</b></div>
+    {rows.length>0&&<div className="rounded-xl border p-3"><h3 className="mb-2 font-semibold">Trocas / devoluções</h3><div className="space-y-2">{rows.map(e=><div key={e.id} className="rounded-lg bg-muted p-2"><div className="flex justify-between gap-3"><span>Devolvido: {e.returned.productName} {e.returned.color}/{e.returned.size} x{e.returned.quantity}</span><b>{e.replacement ? "Troca por "+e.replacement.productName+" "+e.replacement.color+"/"+e.replacement.size+" x"+e.replacement.quantity : "Devolução"}</b></div><p className="text-xs text-muted-foreground">{dateTime(e.date)} · Diferença {brl(e.difference)}</p>{e.notes&&<p className="text-xs">{e.notes}</p>}</div>)}</div></div>}
+    <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={onExchange}><Repeat2 className="mr-2 h-4 w-4"/>Registrar troca / devolução</Button><Button variant="destructive" onClick={onCancel}>Cancelar venda e estornar</Button></div>
+  </div>
 }
 
+function EditSaleForm({sale,onDone}:{sale:any;onDone:()=>void}){
+  const {products,customers,store,updateSale}=useStore();
+  const [items,setItems]=useState<SaleItem[]>(sale.items); const [productId,setProductId]=useState(""); const [variation,setVariation]=useState(""); const [qty,setQty]=useState(1); const [customerId,setCustomerId]=useState(sale.customerId||""); const [method,setMethod]=useState<SalePaymentMethod>(sale.paymentMethod); const [discount,setDiscount]=useState(sale.discount); const [paid,setPaid]=useState(sale.amountPaid); const [dueDate,setDueDate]=useState(sale.dueDate||""); const [notes,setNotes]=useState(sale.notes||"");
+  const product=products.find(p=>p.id===productId); const selectedVariation=product?.variations.find(v=>v.color+"|"+v.size===variation); const subtotal=items.reduce((n,i)=>n+i.total,0); const total=Math.max(0,subtotal-discount);
+  const add=()=>{if(!product||!selectedVariation||qty<1)return;const key=variationKey(product.id,selectedVariation.color,selectedVariation.size);const original=sale.items.filter(i=>variationKey(i.productId,i.color,i.size)===key).reduce((n,i)=>n+i.quantity,0);const current=items.filter(i=>variationKey(i.productId,i.color,i.size)===key).reduce((n,i)=>n+i.quantity,0);if(selectedVariation.qty+original-current<qty)return;const found=items.find(i=>variationKey(i.productId,i.color,i.size)===key);setItems(found?items.map(i=>i.id===found.id?{...i,quantity:i.quantity+qty,total:(i.quantity+qty)*i.unitPrice}:i):[...items,{id:crypto.randomUUID(),productId:product.id,productName:product.name,color:selectedVariation.color,size:selectedVariation.size,quantity:qty,unitPrice:product.price,discount:0,total:product.price*qty}]);setProductId("");setVariation("");setQty(1)};
+  const submit=()=>{if(!items.length||total<=0)return;const ok=updateSale(sale.id,{customerId:customerId||null,customerName:customers.find(c=>c.id===customerId)?.name||"Consumidor não identificado",seller:sale.seller,store,items,subtotal,discount,total,paymentMethod:method,amountPaid:method==="Ficha (AV)"?Math.min(paid,total):Math.max(paid,total),change:Math.max(0,paid-total),dueDate:method==="Ficha (AV)"?(dueDate||null):null,notes});if(ok)onDone()};
+  return <SaleEditorLayout products={products}items={items}setItems={setItems}productId={productId}setProductId={setProductId}variation={variation}setVariation={setVariation}qty={qty}setQty={setQty}onAdd={add}customerId={customerId}setCustomerId={setCustomerId}customers={customers}method={method}setMethod={setMethod}discount={discount}setDiscount={x=>setDiscount(Math.min(subtotal,Math.max(0,x)))}paid={paid}setPaid={setPaid}dueDate={dueDate}setDueDate={setDueDate}notes={notes}setNotes={setNotes}subtotal={subtotal}total={total}onSubmit={submit}submitLabel="Salvar alterações" />
+}
 
-function ExchangeForm({ sale, onDone }: { sale: any; onDone: () => void }) {
-  const { products, restock } = useStore();
-  const [returnedId, setReturnedId] = useState("");
-  const [returnedQty, setReturnedQty] = useState(1);
-  const [replacementId, setReplacementId] = useState("");
-  const [replacementQty, setReplacementQty] = useState(1);
-  const [difference, setDifference] = useState(0);
-  const [notes, setNotes] = useState("");
-  const returned = sale.items.find((i: SaleItem) => i.id === returnedId);
-  const replacement = sale.items.find((i: SaleItem) => i.id === replacementId);
-  const submit = () => {
-    if (!returned || returnedQty < 1 || returnedQty > returned.quantity) return;
-    const key = `modah:exchange:${sale.id}`;
-    const previous = (() => { try { return JSON.parse(window.localStorage.getItem(key) || "[]"); } catch { return []; } })();
-    const record = { id: crypto.randomUUID(), date: new Date().toISOString(), saleId: sale.id, saleNumber: sale.number, returned: { productId: returned.productId, productName: returned.productName, color: returned.color, size: returned.size, quantity: returnedQty }, replacement: replacement ? { productId: replacement.productId, productName: replacement.productName, color: replacement.color, size: replacement.size, quantity: replacementQty } : null, difference: Number(difference) || 0, notes };
-    window.localStorage.setItem(key, JSON.stringify([record, ...previous]));
-    restock(returned.productId, returned.color, returned.size, returnedQty);
-    onDone();
-  };
-  return <div className="space-y-4">
-    <div className="rounded-xl bg-muted p-4"><p className="text-xs text-muted-foreground">Venda</p><p className="font-bold">#{sale.number} · {sale.customerName}</p><p className="text-xs text-muted-foreground">{dateTime(sale.date)}</p></div>
-    <div><Label>Produto devolvido</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={returnedId} onChange={e=>setReturnedId(e.target.value)}><option value="">Selecione um item da venda...</option>{sale.items.map((i: SaleItem)=><option key={i.id} value={i.id}>{i.productName} — {i.color}/{i.size} · {i.quantity} un.</option>)}</select></div>
-    {returned && <div><Label>Quantidade devolvida</Label><Input type="number" min="1" max={returned.quantity} value={returnedQty} onChange={e=>setReturnedQty(Math.max(1,Number(e.target.value)||1))}/></div>}
-    <div><Label>Produto da troca (opcional)</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={replacementId} onChange={e=>setReplacementId(e.target.value)}><option value="">Sem produto de troca</option>{products.filter(p=>!p.details?.inactive).flatMap(p=>p.variations.filter(v=>v.qty>0).map(v=><option key={p.id+"|"+v.color+"|"+v.size} value={sale.items.find(i=>i.productId===p.id&&i.color===v.color&&i.size===v.size)?.id || ""}>{p.name} — {v.color}/{v.size} ({v.qty})</option>))}</select></div>
-    <div className="grid gap-3 sm:grid-cols-2"><div><Label>Quantidade da troca</Label><Input type="number" min="1" value={replacementQty} onChange={e=>setReplacementQty(Math.max(1,Number(e.target.value)||1))}/></div><div><Label>Diferença a pagar/devolver</Label><Input type="number" value={difference} onChange={e=>setDifference(Number(e.target.value)||0)}/></div></div>
-    <div><Label>Observações</Label><textarea className="mt-1 min-h-20 w-full rounded-md border bg-background p-3" value={notes} onChange={e=>setNotes(e.target.value)}/></div>
-    <Button className="w-full" onClick={submit}>Registrar troca</Button>
-  </div>;
+function ExchangeForm({sale,onDone}:{sale:any;onDone:()=>void}){
+  const {products,exchanges,registerExchange}=useStore(); const [returnedId,setReturnedId]=useState(""); const [returnedQty,setReturnedQty]=useState(1); const [replacementKey,setReplacementKey]=useState(""); const [replacementQty,setReplacementQty]=useState(1); const [notes,setNotes]=useState("");
+  const returned=sale.items.find((i:SaleItem)=>i.id===returnedId); const already=returned?exchanges.filter(e=>e.saleId===sale.id&&e.returned.saleItemId===returned.id).reduce((n,e)=>n+e.returned.quantity,0):0; const remaining=returned?Math.max(0,returned.quantity-already):0;
+  const replacement=useMemo(()=>{if(!replacementKey)return null;const [productId,color,size]=replacementKey.split("|");const p=products.find(x=>x.id===productId);const v=p?.variations.find(x=>x.color===color&&x.size===size);return p&&v?{p,v}:null},[products,replacementKey]);
+  const returnedValue=returned?returned.unitPrice*returnedQty:0; const replacementValue=replacement?replacement.p.price*replacementQty:0; const difference=replacementValue-returnedValue;
+  useEffect(()=>{if(returned&&remaining>0&&returnedQty>remaining)setReturnedQty(remaining)},[returned,remaining,returnedQty]); useEffect(()=>{if(replacement&&replacementQty>replacement.v.qty)setReplacementQty(replacement.v.qty)},[replacement,replacementQty]);
+  const submit=()=>{if(!returned||remaining<1)return;const rep=replacement?{productId:replacement.p.id,color:replacement.v.color,size:replacement.v.size,quantity:replacementQty}:null;const ok=registerExchange({saleId:sale.id,returnedItemId:returned.id,returnedQty,replacement:rep,difference,notes});if(ok)onDone()};
+  return <div className="space-y-4"><div className="rounded-xl bg-muted p-4"><p className="text-xs text-muted-foreground">Venda</p><p className="font-bold">#{sale.number} · {sale.customerName}</p><p className="text-xs text-muted-foreground">{dateTime(sale.date)}</p></div>
+    <div><Label>Produto devolvido</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={returnedId} onChange={e=>{setReturnedId(e.target.value);setReturnedQty(1)}}><option value="">Selecione um item da venda...</option>{sale.items.map((i:SaleItem)=>{const used=exchanges.filter(e=>e.saleId===sale.id&&e.returned.saleItemId===i.id).reduce((n,e)=>n+e.returned.quantity,0);const left=i.quantity-used;return <option key={i.id} value={i.id} disabled={left<=0}>{i.productName} — {i.color}/{i.size} · {left} disponível</option>})}</select></div>
+    {returned&&<div><Label>Quantidade devolvida</Label><Input type="number" min="1" max={remaining} value={returnedQty} onChange={e=>setReturnedQty(Math.min(remaining,Math.max(1,Number(e.target.value)||1)))}/></div>}
+    <div><Label>Produto da troca (opcional)</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={replacementKey} onChange={e=>{setReplacementKey(e.target.value);setReplacementQty(1)}}><option value="">Sem produto de troca</option>{products.filter(p=>!p.details?.inactive).flatMap(p=>p.variations.filter(v=>v.qty>0).map(v=><option key={variationKey(p.id,v.color,v.size)} value={variationKey(p.id,v.color,v.size)}>{p.name} — {v.color}/{v.size} ({v.qty} disponíveis)</option>))}</select></div>
+    {replacement&&<div><Label>Quantidade da troca</Label><Input type="number" min="1" max={replacement.v.qty} value={replacementQty} onChange={e=>setReplacementQty(Math.min(replacement.v.qty,Math.max(1,Number(e.target.value)||1)))}/></div>}
+    <div className="grid gap-3 sm:grid-cols-3"><div className="rounded-xl bg-muted p-3"><p className="text-xs text-muted-foreground">Valor devolvido</p><b>{brl(returnedValue)}</b></div><div className="rounded-xl bg-muted p-3"><p className="text-xs text-muted-foreground">Valor novo</p><b>{brl(replacementValue)}</b></div><div className={difference>=0 ? "rounded-xl bg-success/10 p-3" : "rounded-xl bg-warning/10 p-3"}><p className="text-xs text-muted-foreground">{difference>=0?"Cliente paga":"Loja devolve"}</p><b>{brl(Math.abs(difference))}</b></div></div>
+    <div><Label>Observações</Label><textarea className="mt-1 min-h-20 w-full rounded-md border bg-background p-3" value={notes} onChange={e=>setNotes(e.target.value)}/></div><Button className="w-full" disabled={!returned||remaining<1} onClick={submit}>Registrar {replacement?"troca":"devolução"}</Button>
+  </div>
 }
