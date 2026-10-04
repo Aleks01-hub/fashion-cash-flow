@@ -31,6 +31,7 @@ export function DesktopPanel() {
   const [tab, setTab] = useState<"todos" | "atraso">("todos");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [newCustomerOpen, setNewCustomerOpen] = useState(false);
+  const [editingCustomerId, setEditingCustomerId] = useState<string | null>(null);
   const [customerSearch, setCustomerSearch] = useState("");
   const [profileName, setProfileName] = useState(() => typeof window === "undefined" ? "Alex" : (() => { try { return JSON.parse(window.localStorage.getItem("modah:profile") || "null")?.name || "Alex"; } catch { return "Alex"; } })());
   const [businessName, setBusinessName] = useState(() => typeof window === "undefined" ? "Caixa Central" : window.localStorage.getItem("modah:business-name") || "Caixa Central");
@@ -78,10 +79,10 @@ export function DesktopPanel() {
       {section === "vendas" && <SalesPage />}
       {section === "produtos" && <ProductsSection />}
 
-      {section === "fichas" && selected && <CustomerLedger customer={selected} onBack={() => setSelectedId(null)} />}
+      {section === "fichas" && selected && <CustomerLedger customer={selected} onBack={() => setSelectedId(null)} onEdit={() => setEditingCustomerId(selected.id)} />}
       {section === "fichas" && !selected && <section className="card-elevated overflow-x-auto rounded-2xl p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div className="flex gap-2">{(["todos","atraso"] as const).map((t) => <button key={t} onClick={() => setTab(t)} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${tab === t ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{t === "todos" ? `Todos os clientes (${customers.length})` : `Em atraso (${overdue.length})`}</button>)}</div><div className="flex gap-2"><Input className="h-9 w-56" placeholder="Buscar cliente..." value={customerSearch} onChange={e=>setCustomerSearch(e.target.value)} /><Button size="sm" onClick={() => setNewCustomerOpen(true)}>Novo cliente</Button></div></div>
-        <Table><TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Telefone</TableHead><TableHead>Nascimento</TableHead><TableHead>Última compra</TableHead><TableHead>Situação</TableHead><TableHead>Saldo</TableHead></TableRow></TableHeader><TableBody>{list.map((c) => { const last = c.purchases.reduce((max,p)=>p.date>max?p.date:max,""); const spent=c.purchases.reduce((n,p)=>n+p.price,0); return <TableRow key={c.id} className="cursor-pointer" onClick={() => openCustomer(c.id)}><TableCell><div className="font-medium text-primary">{c.name}</div><div className="text-xs text-muted-foreground">{brl(spent)} em compras registradas</div></TableCell><TableCell>{c.whatsapp}</TableCell><TableCell>{c.birthDate ? new Date(c.birthDate + "T12:00:00").toLocaleDateString("pt-BR") : "—"}</TableCell><TableCell>{last ? new Date(last).toLocaleDateString("pt-BR") : "—"}</TableCell><TableCell>{customerStatus(c) === "atraso" ? <StatusBadge tone="danger">Em atraso</StatusBadge> : <StatusBadge tone="success">Em dia</StatusBadge>}</TableCell><TableCell className="font-semibold">{brl(c.av?.balance ?? 0)}</TableCell></TableRow>})}</TableBody></Table>
+        <Table><TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Telefone</TableHead><TableHead>Nascimento</TableHead><TableHead>Última compra</TableHead><TableHead>Situação</TableHead><TableHead>Saldo</TableHead><TableHead>Ações</TableHead></TableRow></TableHeader><TableBody>{list.map((c) => { const last = c.purchases.reduce((max,p)=>p.date>max?p.date:max,""); const spent=c.purchases.reduce((n,p)=>n+p.price,0); return <TableRow key={c.id} className="cursor-pointer" onClick={() => openCustomer(c.id)}><TableCell><div className="font-medium text-primary">{c.name}</div><div className="text-xs text-muted-foreground">{brl(spent)} em compras registradas</div></TableCell><TableCell>{c.whatsapp}</TableCell><TableCell>{c.birthDate ? new Date(c.birthDate + "T12:00:00").toLocaleDateString("pt-BR") : "—"}</TableCell><TableCell>{last ? new Date(last).toLocaleDateString("pt-BR") : "—"}</TableCell><TableCell>{customerStatus(c) === "atraso" ? <StatusBadge tone="danger">Em atraso</StatusBadge> : <StatusBadge tone="success">Em dia</StatusBadge>}</TableCell><TableCell className="font-semibold">{brl(c.av?.balance ?? 0)}</TableCell><TableCell><Button size="sm" variant="ghost" onClick={(e)=>{e.stopPropagation();setEditingCustomerId(c.id)}}><Settings className="h-4 w-4 mr-1"/>Editar</Button></TableCell></TableRow>})}</TableBody></Table>
       </section>}
 
       {section === "dashboard" && <>
@@ -95,6 +96,7 @@ export function DesktopPanel() {
 
       {section === "dashboard" && <ProductTable products={products} updateProduct={updateProduct} />}
       {section === "fichas" && !selected && <NewCustomerDialog open={newCustomerOpen} onOpenChange={setNewCustomerOpen} />}
+      <NewCustomerDialog open={!!editingCustomerId} onOpenChange={(open) => !open && setEditingCustomerId(null)} customer={customers.find(c=>c.id===editingCustomerId) ?? null} />
 
       {section === "fechamento" && <OperationsSection />}
       {section === "configuracoes" && <ProfileSettingsSection />}
