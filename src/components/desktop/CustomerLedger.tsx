@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, Minus } from "lucide-react";
+import { ArrowLeft, Minus, MessageCircle, CalendarDays, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,6 +39,16 @@ export function CustomerLedger({ customer, onBack }: { customer: Customer; onBac
       </Button>
       <h2 className="mb-4 text-lg font-bold uppercase tracking-wide">Ficha do Cliente</h2>
 
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl bg-muted p-3"><p className="text-xs text-muted-foreground">Nascimento</p><b>{customer.birthDate ? new Date(customer.birthDate + "T12:00:00").toLocaleDateString("pt-BR") : "Não informado"}</b></div>
+        <div className="rounded-xl bg-muted p-3"><p className="text-xs text-muted-foreground">Tamanho</p><b>{customer.preferredSize}</b></div>
+        <div className="rounded-xl bg-muted p-3"><p className="text-xs text-muted-foreground">Total comprado</p><b>{brl(customer.purchases.reduce((n,p)=>n+p.price,0))}</b></div>
+        <div className="rounded-xl bg-muted p-3"><p className="text-xs text-muted-foreground">Compras</p><b>{customer.purchases.length}</b></div>
+      </div>
+      <div className="mb-4 grid gap-2 md:grid-cols-2">
+        <div className="rounded-xl border p-3 text-sm"><p className="flex items-center gap-2 font-semibold"><CalendarDays className="h-4 w-4 text-primary"/> Endereço</p><p className="mt-1 text-muted-foreground">{customer.address || "Não informado"}</p></div>
+        <Button asChild variant="outline" className="justify-start"><a href={`https://wa.me/${customer.whatsapp}`} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4"/>Abrir WhatsApp</a></Button>
+      </div>
       <div className="grid gap-3 border-b border-border pb-4 sm:grid-cols-2">
         <div className="space-y-1 text-sm">
           <p><span className="text-muted-foreground">Nome:</span> <b>{customer.name}</b></p>
