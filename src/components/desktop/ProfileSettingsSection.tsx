@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell, Download, LockKeyhole, Moon, Save, Settings, Sun, Trash2, UserCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { stores } from "@/lib/mock-data";
 import { useStore } from "@/lib/store";
 
@@ -39,6 +38,7 @@ export function ProfileSettingsSection() {
     localStorage.setItem("modah:profile",JSON.stringify(profile));
     localStorage.setItem("modah:settings",JSON.stringify(settings));
     localStorage.setItem("modah:business-name",settings.businessName);
+    window.dispatchEvent(new Event("modah:profile-updated"));
     setSaved(true); setTimeout(()=>setSaved(false),1800);
   };
 
