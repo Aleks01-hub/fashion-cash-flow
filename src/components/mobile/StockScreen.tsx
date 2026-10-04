@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useStore } from "@/lib/store";
 import { brl } from "@/lib/format";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const SIZES = ["PP", "P", "M", "G", "GG", "36", "38", "40", "42", "44", "46", "48"];
 const STATUS = [
@@ -19,6 +20,7 @@ export function StockScreen() {
   const [category, setCategory] = useState("Todas");
   const [size, setSize] = useState("Todos");
   const [status, setStatus] = useState<(typeof STATUS)[number]["id"]>("all");
+  const [selectedProduct, setSelectedProduct] = useState<(typeof products)[number] | null>(null);
 
   const categories = useMemo(
     () => ["Todas", ...Array.from(new Set(products.map((p) => p.category)))],
@@ -69,7 +71,7 @@ export function StockScreen() {
 
       <div className="space-y-4">
         {list.map((p) => (
-          <article key={p.id} className="card-elevated overflow-hidden rounded-2xl">
+          <button type="button" key={p.id} onClick={() => setSelectedProduct(p)} className="card-elevated block w-full overflow-hidden rounded-2xl text-left transition-transform active:scale-[0.99]">
             <div className="grid grid-cols-[96px_minmax(0,1fr)] gap-3">
               <img src={p.photo} alt={p.name} loading="lazy" className="h-full w-24 object-cover" />
               <div className="min-w-0 py-3 pr-3">
@@ -96,9 +98,68 @@ export function StockScreen() {
                 );
               })}
             </div>
-          </article>
+          </button>
         ))}
       </div>
+
+      <Dialog open={!!selectedProduct} onOpenChange={(open) => !open && setSelectedProduct(null)}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto rounded-2xl p-0 sm:max-w-lg">
+          {selectedProduct && (
+            <>
+              <div className="relative">
+                <img src={selectedProduct.photo} alt={selectedProduct.name} className="h-56 w-full object-cover" />
+                <button type="button" onClick={() => setSelectedProduct(null)} className="absolute right-3 top-3 rounded-full bg-background/90 p-2 shadow" aria-label="Fechar detalhes">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="space-y-5 p-5">
+                <DialogHeader className="text-left">
+                  <DialogTitle className="text-xl">{selectedProduct.name}</DialogTitle>
+                  <DialogDescription>{selectedProduct.category} · {selectedProduct.tags.join(" · ")}</DialogDescription>
+                </DialogHeader>
+
+                <div className="flex items-end justify-between gap-3">
+                  <div><p className="text-xs text-muted-foreground">Preço de venda</p><p className="text-2xl font-bold text-primary">{brl(selectedProduct.price)}</p></div>
+                  <div className="rounded-xl bg-muted px-3 py-2 text-right"><p className="text-[10px] text-muted-foreground">Estoque total</p><p className="font-bold">{selectedProduct.variations.reduce((n, v) => n + v.qty, 0)} un</p></div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  {[
+                    ["Marca", selectedProduct.details?.brand],
+                    ["Referência", selectedProduct.details?.reference],
+                    ["Código de barras", selectedProduct.details?.barcode],
+                    ["Fornecedor", selectedProduct.details?.supplier],
+                    ["Unidade", selectedProduct.details?.unit],
+                    ["Localização", selectedProduct.details?.location],
+                    ["Garantia", selectedProduct.details?.warranty],
+                  ].filter(([, value]) => value).map(([label, value]) => (
+                    <div key={label} className="rounded-xl border border-border p-3">
+                      <p className="text-[10px] text-muted-foreground">{label}</p><p className="mt-1 break-words font-medium">{value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <p className="mb-2 text-sm font-semibold">Cores e tamanhos</p>
+                  <div className="space-y-2">
+                    {selectedProduct.variations.map((v) => {
+                      const tone = v.qty === 0 ? "danger" : v.inBag > 0 || v.reserved > 0 ? "warning" : "success";
+                      return (
+                        <div key={v.color + v.size} className="flex items-center justify-between rounded-xl border border-border p-3">
+                          <div><p className="text-sm font-medium">{v.color} · {v.size}</p><p className="text-[11px] text-muted-foreground">Reservado {v.reserved} · Bag {v.inBag}</p></div>
+                          <StatusBadge tone={tone}>{v.qty === 0 ? "Esgotado" : `${v.qty} un`}</StatusBadge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {selectedProduct.details?.notes && <div className="rounded-xl bg-muted p-3"><p className="text-xs font-semibold">Observações</p><p className="mt-1 text-sm text-muted-foreground">{selectedProduct.details.notes}</p></div>}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
