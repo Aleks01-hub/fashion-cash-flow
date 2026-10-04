@@ -7,17 +7,31 @@ export type ParsedCommand =
   | { type: "venda"; produto: string; cor: string; tamanho: string; quantidade: number; forma_pagamento: string; valor: number; productId: string }
   | { type: "abate_av"; cliente: string; customerId: string; valor: number; forma_pagamento: string };
 
+export type StockMovement = {
+  id: string; date: string; type: "venda" | "entrada" | "troca" | "ajuste" | "compra" | "devolução";
+  productId: string; productName: string; color: string; size: string; quantity: number; note: string;
+};
+
+export type ExchangeRecord = {
+  id: string; date: string; saleId: string; saleNumber: number; customerId: string | null; customerName: string;
+  returned: { saleItemId: string; productId: string; productName: string; color: string; size: string; quantity: number; unitPrice: number };
+  replacement: { productId: string; productName: string; color: string; size: string; quantity: number; unitPrice: number } | null;
+  difference: number; notes: string;
+};
+
 type NewSale = Omit<Sale, "id" | "number" | "date" | "store" | "paymentStatus"> & { store?: string };
 
 type Ctx = {
   products: Product[]; customers: Customer[]; reservations: Reservation[]; sales: Sale[];
+  exchanges: ExchangeRecord[]; stockMovements: StockMovement[];
   store: string; setStore: (s: string) => void; online: boolean; setOnline: (v: boolean) => void;
   registerSale: (c: Extract<ParsedCommand, { type: "venda" }>) => void;
   createSale: (sale: NewSale) => boolean; updateSale: (id: string, sale: NewSale) => boolean; cancelSale: (id: string) => boolean;
+  registerExchange: (input: { saleId: string; returnedItemId: string; returnedQty: number; replacement: { productId: string; color: string; size: string; quantity: number } | null; difference: number; notes: string }) => boolean;
   registerAv: (c: Extract<ParsedCommand, { type: "abate_av" }>) => void;
   updateCustomer: (id: string, patch: Partial<Customer>) => void;
   addCustomer: (c: Omit<Customer, "id" | "payments" | "purchases">) => void;
-  restock: (productId: string, color: string, size: string, qty: number) => void;
+  restock: (productId: string, color: string, size: string, qty: number, note?: string) => void;
   updateProduct: (id: string, patch: Partial<Product>) => void; addProduct: (p: Omit<Product, "id">) => void; deleteProduct: (id: string) => void;
   addLedgerPurchase: (customerId: string, items: string, price: number) => void; addLedgerPayment: (customerId: string, amount: number, method: string) => void;
   feed: { id: string; text: string; at: string }[];
@@ -25,11 +39,53 @@ type Ctx = {
 
 const StoreContext = createContext<Ctx | null>(null);
 
+function load<T>(key: string, fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try { return JSON.parse(window.localStorage.getItem(key) || "null") ?? fallback; } catch { return fallback; }
+}
+
+const saleItemsText = (sale: Pick<Sale, "items">) =>
+  sale.items.map((i) => i.productName + " " + i.color + " " + i.size + " x" + i.quantity).join(", ");
+
+function applySaleToCustomer(customer: Customer, sale: Pick<Sale, "customerId" | "paymentMethod" | "total" | "amountPaid" | "dueDate" | "items">, saleId: string, sign: 1 | -1, date: string) {
+  const purchaseId = saleId;
+  if (sign === -1) {
+    const purchaseRemoved = customer.purchases.some((p) => p.id === purchaseId);
+    const outstanding = sale.paymentMethod === "Ficha (AV)" ? Math.max(0, sale.total - sale.amountPaid) : 0;
+    const av = customer.av && sale.paymentMethod === "Ficha (AV)"
+      ? { ...customer.av, total: Math.max(0, customer.av.total - sale.total), balance: Math.max(0, customer.av.balance - outstanding) }
+      : customer.av;
+    return {
+      ...customer,
+      av,
+      purchases: purchaseRemoved ? customer.purchases.filter((p) => p.id !== purchaseId) : customer.purchases,
+      payments: customer.payments.filter((p) => p.saleId !== saleId),
+    };
+  }
+
+  const purchase = { id: purchaseId, date, items: saleItemsText(sale), price: sale.total, method: sale.paymentMethod };
+  if (sale.paymentMethod !== "Ficha (AV)") return { ...customer, purchases: [purchase, ...customer.purchases.filter((p) => p.id !== purchaseId)] };
+
+  const outstanding = Math.max(0, sale.total - sale.amountPaid);
+  const avBase = customer.av ?? { total: 0, balance: 0, dueDate: sale.dueDate ?? new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10) };
+  const newBalance = avBase.balance + outstanding;
+  return {
+    ...customer,
+    av: { ...avBase, total: avBase.total + sale.total, balance: newBalance, dueDate: sale.dueDate ?? avBase.dueDate },
+    purchases: [{ ...purchase, method: "Ficha (AV)" }, ...customer.purchases.filter((p) => p.id !== purchaseId)],
+    payments: sale.amountPaid > 0
+      ? [{ id: crypto.randomUUID(), saleId, date, amount: sale.amountPaid, method: sale.paymentMethod, balanceAfter: newBalance }, ...customer.payments.filter((p) => p.saleId !== saleId)]
+      : customer.payments.filter((p) => p.saleId !== saleId),
+  };
+}
+
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<Product[]>(() => { try { return JSON.parse(typeof window !== "undefined" ? window.localStorage.getItem("modah:products") || "null" : "null") ?? seedProducts; } catch { return seedProducts; } });
-  const [customers, setCustomers] = useState<Customer[]>(() => { try { const saved = JSON.parse(typeof window !== "undefined" ? window.localStorage.getItem("modah:customers") || "null" : "null") ?? seedCustomers; return saved.map((c: Customer) => ({ ...c, birthDate: c.birthDate || c.notes?.match(/Nascimento:\\s*(\\d{4}-\\d{2}-\\d{2})/)?.[1] || "" })); } catch { return seedCustomers; } });
+  const [products, setProducts] = useState<Product[]>(() => load("modah:products", seedProducts));
+  const [customers, setCustomers] = useState<Customer[]>(() => load<Customer[]>("modah:customers", seedCustomers).map((c) => ({ ...c, birthDate: c.birthDate || c.notes?.match(/Nascimento:\s*(\d{4}-\d{2}-\d{2})/)?.[1] || "" })));
   const [reservations] = useState<Reservation[]>(seedReservations);
-  const [sales, setSales] = useState<Sale[]>(() => { try { return JSON.parse(typeof window !== "undefined" ? window.localStorage.getItem("modah:sales") || "null" : "null") ?? seedSales; } catch { return seedSales; } });
+  const [sales, setSales] = useState<Sale[]>(() => load("modah:sales", seedSales));
+  const [exchanges, setExchanges] = useState<ExchangeRecord[]>(() => load("modah:exchanges", []));
+  const [stockMovements, setStockMovements] = useState<StockMovement[]>(() => load("modah:stock-movements", []));
   const [store, setStore] = useState<string>(stores[0]!);
   const [online, setOnline] = useState(true);
   const [feed, setFeed] = useState<{ id: string; text: string; at: string }[]>([]);
@@ -37,6 +93,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => { window.localStorage.setItem("modah:products", JSON.stringify(products)); }, [products]);
   useEffect(() => { window.localStorage.setItem("modah:customers", JSON.stringify(customers)); }, [customers]);
   useEffect(() => { window.localStorage.setItem("modah:sales", JSON.stringify(sales)); }, [sales]);
+  useEffect(() => { window.localStorage.setItem("modah:exchanges", JSON.stringify(exchanges)); }, [exchanges]);
+  useEffect(() => { window.localStorage.setItem("modah:stock-movements", JSON.stringify(stockMovements.slice(0, 500))); }, [stockMovements]);
+
+  const pushMovement = useCallback((movement: Omit<StockMovement, "id" | "date">) => {
+    setStockMovements((prev) => [{ ...movement, id: crypto.randomUUID(), date: new Date().toISOString() }, ...prev].slice(0, 500));
+  }, []);
 
   const push = useCallback((text: string) => {
     const entry = { id: crypto.randomUUID(), text, at: new Date().toISOString() };
@@ -51,85 +113,129 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const key = item.productId + "|" + item.color + "|" + item.size;
       const product = products.find((p) => p.id === item.productId);
       const variation = product?.variations.find((v) => v.color === item.color && v.size === item.size);
-      const available = variation?.qty ?? 0;
       const used = stock.get(key) ?? 0;
-      if (!variation || available - used < item.quantity) { toast.error("Estoque insuficiente para concluir a venda."); return false; }
+      if (!variation || variation.qty - used < item.quantity) { toast.error("Estoque insuficiente para concluir a venda."); return false; }
       stock.set(key, used + item.quantity);
     }
     setProducts((prev) => prev.map((p) => ({
       ...p,
       variations: p.variations.map((v) => {
-        const key = p.id + "|" + v.color + "|" + v.size;
-        const sold = stock.get(key) ?? 0;
+        const sold = stock.get(p.id + "|" + v.color + "|" + v.size) ?? 0;
         return sold ? { ...v, qty: v.qty - sold } : v;
       }),
     })));
 
     const number = sales.reduce((max, s) => Math.max(max, s.number), 1000) + 1;
     const date = new Date().toISOString();
-    const record: Sale = {
-      ...sale, id: crypto.randomUUID(), number, date, store: sale.store || store,
-      paymentStatus: sale.paymentMethod === "Ficha (AV)" && sale.amountPaid < sale.total ? "pendente" : "pago",
-    };
+    const record: Sale = { ...sale, id: crypto.randomUUID(), number, date, store: sale.store || store, paymentStatus: sale.paymentMethod === "Ficha (AV)" && sale.amountPaid < sale.total ? "pendente" : "pago" };
     setSales((prev) => [record, ...prev]);
 
-    if (sale.customerId) {
-      setCustomers((prev) => prev.map((c) => {
-        if (c.id !== sale.customerId) return c;
-        const itemsText = sale.items.map((i) => i.productName + " " + i.color + " " + i.size + " x" + i.quantity).join(", ");
-        if (sale.paymentMethod !== "Ficha (AV)") {
-          return { ...c, purchases: [{ id: record.id, date, items: itemsText, price: sale.total, method: sale.paymentMethod }, ...c.purchases] };
-        }
-        const av = c.av
-          ? { ...c.av, total: c.av.total + sale.total, balance: c.av.balance + Math.max(0, sale.total - sale.amountPaid) }
-          : { total: sale.total, balance: Math.max(0, sale.total - sale.amountPaid), dueDate: sale.dueDate ?? new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10) };
-        return {
-          ...c, av,
-          purchases: [{ id: record.id, date, items: itemsText, price: sale.total, method: "Ficha (AV)" }, ...c.purchases],
-          payments: sale.amountPaid > 0 ? [{ id: crypto.randomUUID(), date, amount: sale.amountPaid, method: sale.paymentMethod, balanceAfter: av.balance }, ...c.payments] : c.payments,
-        };
-      }));
-    }
+    for (const item of sale.items) pushMovement({ type: "venda", productId: item.productId, productName: item.productName, color: item.color, size: item.size, quantity: -item.quantity, note: "Venda #" + number });
+    if (sale.customerId) setCustomers((prev) => prev.map((c) => c.id === sale.customerId ? applySaleToCustomer(c, record, record.id, 1, date) : c));
     push("Venda #" + number + " registrada — " + brl(sale.total) + " (" + sale.paymentMethod + ")");
     return true;
-  }, [push, products, sales, store]);
+  }, [push, products, sales, store, pushMovement]);
 
   const updateSale = useCallback((id: string, sale: NewSale) => {
     const old = sales.find((s) => s.id === id);
     if (!old) return false;
-    setProducts((prev) => prev.map((p) => {
-      const oldItems = old.items.filter((i) => i.productId === p.id);
-      const newItems = sale.items.filter((i) => i.productId === p.id);
-      return { ...p, variations: p.variations.map((v) => {
-        const returned = oldItems.filter((i) => i.color === v.color && i.size === v.size).reduce((n, i) => n + i.quantity, 0);
-        const sold = newItems.filter((i) => i.color === v.color && i.size === v.size).reduce((n, i) => n + i.quantity, 0);
-        return returned || sold ? { ...v, qty: v.qty + returned - sold } : v;
-      }) };
-    }));
+    const needs = new Map<string, number>();
+    sale.items.forEach((i) => needs.set(i.productId + "|" + i.color + "|" + i.size, (needs.get(i.productId + "|" + i.color + "|" + i.size) ?? 0) + i.quantity));
+    for (const [key, qty] of needs) {
+      const [productId, color, size] = key.split("|");
+      const product = products.find((p) => p.id === productId);
+      const variation = product?.variations.find((v) => v.color === color && v.size === size);
+      const oldQty = old.items.filter((i) => i.productId === productId && i.color === color && i.size === size).reduce((n, i) => n + i.quantity, 0);
+      if (!variation || variation.qty + oldQty < qty) { toast.error("A nova venda não cabe no estoque disponível."); return false; }
+    }
+
+    setProducts((prev) => prev.map((p) => ({
+      ...p,
+      variations: p.variations.map((v) => {
+        const key = p.id + "|" + v.color + "|" + v.size;
+        const oldQty = old.items.filter((i) => i.productId + "|" + i.color + "|" + i.size === key).reduce((n, i) => n + i.quantity, 0);
+        const newQty = sale.items.filter((i) => i.productId + "|" + i.color + "|" + i.size === key).reduce((n, i) => n + i.quantity, 0);
+        return oldQty || newQty ? { ...v, qty: v.qty + oldQty - newQty } : v;
+      }),
+    })));
+
     const record: Sale = { ...sale, id, number: old.number, date: old.date, store: sale.store || store, paymentStatus: sale.paymentMethod === "Ficha (AV)" && sale.amountPaid < sale.total ? "pendente" : "pago" };
     setSales((prev) => prev.map((s) => s.id === id ? record : s));
-    if (sale.customerId) {
-      setCustomers((prev) => prev.map((c) => c.id === sale.customerId ? { ...c, purchases: [{ id, date: old.date, items: sale.items.map((i) => i.productName + " " + i.color + " " + i.size + " x" + i.quantity).join(", "), price: sale.total, method: sale.paymentMethod }, ...c.purchases.filter((p) => p.id !== id)] } : c));
-    }
+    old.items.forEach((i) => pushMovement({ type: "ajuste", productId: i.productId, productName: i.productName, color: i.color, size: i.size, quantity: i.quantity, note: "Estorno para edição da venda #" + old.number }));
+    sale.items.forEach((i) => pushMovement({ type: "venda", productId: i.productId, productName: i.productName, color: i.color, size: i.size, quantity: -i.quantity, note: "Nova composição da venda #" + old.number }));
+    setCustomers((prev) => {
+      let next = prev;
+      if (old.customerId) next = next.map((c) => c.id === old.customerId ? applySaleToCustomer(c, old, old.id, -1, old.date) : c);
+      if (sale.customerId) next = next.map((c) => c.id === sale.customerId ? applySaleToCustomer(c, record, id, 1, old.date) : c);
+      return next;
+    });
     push("Venda #" + old.number + " editada");
     return true;
-  }, [push, sales, store]);
+  }, [push, products, sales, store, pushMovement]);
 
   const cancelSale = useCallback((id: string) => {
     const sale = sales.find((s) => s.id === id);
     if (!sale) return false;
     setProducts((prev) => prev.map((p) => {
       const items = sale.items.filter((i) => i.productId === p.id);
-      if (!items.length) return p;
-      return { ...p, variations: p.variations.map((v) => {
+      return items.length ? { ...p, variations: p.variations.map((v) => {
         const qty = items.filter((i) => i.color === v.color && i.size === v.size).reduce((sum, i) => sum + i.quantity, 0);
         return qty ? { ...v, qty: v.qty + qty } : v;
+      }) } : p;
+    }));
+    sale.items.forEach((i) => pushMovement({ type: "devolução", productId: i.productId, productName: i.productName, color: i.color, size: i.size, quantity: i.quantity, note: "Cancelamento da venda #" + sale.number }));
+    setSales((prev) => prev.filter((s) => s.id !== id));
+    if (sale.customerId) setCustomers((prev) => prev.map((c) => c.id === sale.customerId ? applySaleToCustomer(c, sale, sale.id, -1, sale.date) : c));
+    setExchanges((prev) => prev.filter((e) => e.saleId !== id));
+    push("Venda #" + sale.number + " cancelada e estoque/financeiro estornados");
+    return true;
+  }, [push, sales, pushMovement]);
+
+  const registerExchange = useCallback((input: { saleId: string; returnedItemId: string; returnedQty: number; replacement: { productId: string; color: string; size: string; quantity: number } | null; difference: number; notes: string }) => {
+    const sale = sales.find((s) => s.id === input.saleId);
+    if (!sale) return false;
+    const returned = sale.items.find((i) => i.id === input.returnedItemId);
+    if (!returned || input.returnedQty < 1) { toast.error("Selecione um item e uma quantidade válida."); return false; }
+    const alreadyReturned = exchanges.filter((e) => e.saleId === sale.id && e.returned.saleItemId === returned.id).reduce((n, e) => n + e.returned.quantity, 0);
+    if (input.returnedQty > returned.quantity - alreadyReturned) { toast.error("A quantidade devolvida ultrapassa o saldo disponível da venda."); return false; }
+
+    let replacementProduct: Product | undefined;
+    let replacementVariation: Product["variations"][number] | undefined;
+    if (input.replacement) {
+      replacementProduct = products.find((p) => p.id === input.replacement!.productId);
+      replacementVariation = replacementProduct?.variations.find((v) => v.color === input.replacement!.color && v.size === input.replacement!.size);
+      if (!replacementVariation || replacementVariation.qty < input.replacement.quantity) { toast.error("Estoque insuficiente para o produto da troca."); return false; }
+    }
+
+    const record: ExchangeRecord = {
+      id: crypto.randomUUID(), date: new Date().toISOString(), saleId: sale.id, saleNumber: sale.number, customerId: sale.customerId, customerName: sale.customerName,
+      returned: { saleItemId: returned.id, productId: returned.productId, productName: returned.productName, color: returned.color, size: returned.size, quantity: input.returnedQty, unitPrice: returned.unitPrice },
+      replacement: replacementProduct && replacementVariation && input.replacement ? { productId: replacementProduct.id, productName: replacementProduct.name, color: replacementVariation.color, size: replacementVariation.size, quantity: input.replacement.quantity, unitPrice: replacementProduct.price } : null,
+      difference: Number(input.difference) || 0, notes: input.notes,
+    };
+    setProducts((prev) => prev.map((p) => {
+      const returnedQty = p.id === returned.productId ? input.returnedQty : 0;
+      const replacementQty = replacementProduct?.id === p.id ? input.replacement?.quantity ?? 0 : 0;
+      return { ...p, variations: p.variations.map((v) => {
+        if (p.id === returned.productId && v.color === returned.color && v.size === returned.size) return { ...v, qty: v.qty + returnedQty };
+        if (replacementProduct && p.id === replacementProduct.id && v.color === replacementVariation?.color && v.size === replacementVariation?.size) return { ...v, qty: v.qty - replacementQty };
+        return v;
       }) };
     }));
-    setSales((prev) => prev.filter((s) => s.id !== id));
-    push("Venda #" + sale.number + " cancelada e estoque estornado");
+    pushMovement({ type: "troca", productId: returned.productId, productName: returned.productName, color: returned.color, size: returned.size, quantity: input.returnedQty, note: "Troca da venda #" + sale.number });
+    if (replacementProduct && replacementVariation && input.replacement) pushMovement({ type: "troca", productId: replacementProduct.id, productName: replacementProduct.name, color: replacementVariation.color, size: replacementVariation.size, quantity: -input.replacement.quantity, note: "Troca da venda #" + sale.number });
+
+    setExchanges((prev) => [record, ...prev]);
+    if (sale.customerId && sale.paymentMethod === "Ficha (AV)" && record.difference !== 0) {
+      setCustomers((prev) => prev.map((c) => {
+        if (c.id !== sale.customerId || !c.av) return c;
+        const balance = Math.max(0, c.av.balance + record.difference);
+        return { ...c, av: { ...c.av, balance } };
+      }));
+    }
+    push("Troca da venda #" + sale.number + " registrada");
     return true;
-  }, [push, sales]);
+  }, [push, sales, products, exchanges, pushMovement]);
 
   const registerSale = useCallback((c: Extract<ParsedCommand, { type: "venda" }>) => {
     createSale({
@@ -154,10 +260,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setCustomers((prev) => [{ ...c, id: crypto.randomUUID(), payments: [], purchases: [] }, ...prev]);
     push("Nova ficha cadastrada: " + c.name);
   }, [push]);
-  const restock = useCallback((productId: string, color: string, size: string, qty: number) => {
+  const restock = useCallback((productId: string, color: string, size: string, qty: number, note = "Entrada manual") => {
+    if (qty <= 0) return;
     setProducts((prev) => prev.map((p) => p.id !== productId ? p : { ...p, variations: p.variations.map((v) => v.color === color && v.size === size ? { ...v, qty: v.qty + qty } : v) }));
+    const p = products.find((x) => x.id === productId);
+    const v = p?.variations.find((x) => x.color === color && x.size === size);
+    if (p && v) pushMovement({ type: "entrada", productId, productName: p.name, color, size, quantity: qty, note });
     push("Entrada de estoque: " + color + " " + size + " +" + qty);
-  }, [push]);
+  }, [push, products, pushMovement]);
+
   const updateProduct = useCallback((id: string, patch: Partial<Product>) => setProducts((prev) => prev.map((p) => p.id === id ? { ...p, ...patch } : p)), []);
   const addProduct = useCallback((p: Omit<Product, "id">) => setProducts((prev) => [{ ...p, id: crypto.randomUUID() }, ...prev]), []);
   const deleteProduct = useCallback((id: string) => setProducts((prev) => prev.filter((p) => p.id !== id)), []);
@@ -169,7 +280,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }));
     push("Compra na ficha: " + items + " — " + brl(price));
   }, [push]);
+
   const addLedgerPayment = useCallback((customerId: string, amount: number, method: string) => {
+    if (amount <= 0) return;
     setCustomers((prev) => prev.map((cu) => {
       if (cu.id !== customerId || !cu.av) return cu;
       const balance = Math.max(0, cu.av.balance - amount);
@@ -178,7 +291,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     push("Abatimento de " + brl(amount) + " registrado (" + method + ")");
   }, [push]);
 
-  const value = useMemo(() => ({ products, customers, reservations, sales, store, setStore, online, setOnline, registerSale, createSale, updateSale, cancelSale, registerAv, updateCustomer, addCustomer, restock, updateProduct, addProduct, deleteProduct, addLedgerPurchase, addLedgerPayment, feed }), [products, customers, reservations, sales, store, online, registerSale, createSale, updateSale, cancelSale, registerAv, updateCustomer, addCustomer, restock, updateProduct, addProduct, deleteProduct, addLedgerPurchase, addLedgerPayment, feed]);
+  const value = useMemo(() => ({ products, customers, reservations, sales, exchanges, stockMovements, store, setStore, online, setOnline, registerSale, createSale, updateSale, cancelSale, registerExchange, registerAv, updateCustomer, addCustomer, restock, updateProduct, addProduct, deleteProduct, addLedgerPurchase, addLedgerPayment, feed }), [products, customers, reservations, sales, exchanges, stockMovements, store, online, registerSale, createSale, updateSale, cancelSale, registerExchange, registerAv, updateCustomer, addCustomer, restock, updateProduct, addProduct, deleteProduct, addLedgerPurchase, addLedgerPayment, feed]);
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 
