@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, BarChart3, Boxes, LayoutDashboard, MessageCircle, Radio, Users, Menu, ShoppingBag, X, Package } from "lucide-react";
+import { AlertTriangle, BarChart3, Boxes, LayoutDashboard, MessageCircle, Radio, Users, Menu, ShoppingBag, X, Package, Wallet as WalletIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,7 +62,7 @@ export function DesktopPanel() {
 
       {section === "fichas" && selected && <CustomerLedger customer={selected} onBack={() => setSelectedId(null)} />}
       {section === "fichas" && !selected && <section className="card-elevated overflow-x-auto rounded-2xl p-4">
-        <div className="mb-3 flex items-center justify-between gap-2"><div className="flex gap-2">{(["todos","atraso"] as const).map((t) => <button key={t} onClick={() => setTab(t)} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${tab === t ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{t === "todos" ? `Todos os clientes (${customers.length})` : `Em atraso (${overdue.length})`}</button>)}</div>
+        <div className="mb-3 flex items-center justify-between gap-2"><div className="flex gap-2">{(["todos","atraso"] as const).map((t) => <button key={t} onClick={() => setTab(t)} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${tab === t ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{t === "todos" ? `Todos os clientes (${customers.length})` : `Em atraso (${overdue.length})`}</button>)}</div><Button size="sm" onClick={() => setNewCustomerOpen(true)}>Novo cliente</Button></div>
         <Table><TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Telefone</TableHead><TableHead>Situação</TableHead><TableHead>Saldo Devedor</TableHead></TableRow></TableHeader><TableBody>{list.map((c) => <TableRow key={c.id} className="cursor-pointer" onClick={() => openCustomer(c.id)}><TableCell className="font-medium text-primary">{c.name}</TableCell><TableCell>{c.whatsapp}</TableCell><TableCell>{customerStatus(c) === "atraso" ? <StatusBadge tone="danger">Em atraso</StatusBadge> : <StatusBadge tone="success">Em dia</StatusBadge>}</TableCell><TableCell className="font-semibold">{brl(c.av?.balance ?? 0)}</TableCell></TableRow>)}</TableBody></Table>
       </section>}
 
@@ -75,7 +75,9 @@ export function DesktopPanel() {
       </>}
 
       {section === "dashboard" && <ProductTable products={products} updateProduct={updateProduct} />}
-      {section === "fichas" && !selected && <NewCustomerDialog open={newCustomerOpen} onOpenChange={setNewCustomerOpen} />}\n\n      {section === "fechamento" && <section className="card-elevated rounded-2xl p-4"><h2 className="mb-3 font-bold">Relatório de Fechamento</h2><ul className="space-y-2 text-sm"><li className="flex justify-between rounded-xl bg-muted p-3"><span>Vendas</span><b>{brl(totals.vendas)}</b></li><li className="flex justify-between rounded-xl bg-muted p-3"><span>Recebido</span><b>{brl(totals.arrecadado)}</b></li><li className="flex justify-between rounded-xl bg-muted p-3"><span>Peças</span><b>{totals.pecas}</b></li><li className="flex justify-between rounded-xl bg-muted p-3"><span>Fichas em atraso</span><b>{overdue.length}</b></li></ul></section>}
+      {section === "fichas" && !selected && <NewCustomerDialog open={newCustomerOpen} onOpenChange={setNewCustomerOpen} />}
+
+      {section === "fechamento" && <section className="card-elevated rounded-2xl p-4"><h2 className="mb-3 font-bold">Relatório de Fechamento</h2><ul className="space-y-2 text-sm"><li className="flex justify-between rounded-xl bg-muted p-3"><span>Vendas</span><b>{brl(totals.vendas)}</b></li><li className="flex justify-between rounded-xl bg-muted p-3"><span>Recebido</span><b>{brl(totals.arrecadado)}</b></li><li className="flex justify-between rounded-xl bg-muted p-3"><span>Peças</span><b>{totals.pecas}</b></li><li className="flex justify-between rounded-xl bg-muted p-3"><span>Fichas em atraso</span><b>{overdue.length}</b></li></ul></section>}
     </main>
   </div>;
 }
@@ -88,4 +90,26 @@ function Metric({ label, value, icon: Icon, tone }: { label: string; value: stri
   const bg = { primary: "bg-primary/10 text-primary", success: "bg-success/12 text-success", warning: "bg-warning/15 text-warning", danger: "bg-danger/12 text-danger" }[tone];
   return <div className="card-elevated grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl p-4"><div><p className="truncate text-xs text-muted-foreground">{label}</p><p className="truncate text-xl font-bold">{value}</p></div><div className={`grid h-10 w-10 place-items-center rounded-xl ${bg}`}><Icon className="h-5 w-5" /></div></div>;
 }
-function WalletIcon(props: React.ComponentProps<typeof BarChart3>) { return <BarChart3 {...props} />; }
+
+
+type SalesList = ReturnType<typeof useStore>["sales"];
+type CustomerList = ReturnType<typeof useStore>["customers"];
+
+function SalesRanking({ sales }: { sales: SalesList }) {
+  const map = new Map<string, number>();
+  sales.forEach((s) => s.items.forEach((i) => map.set(i.productName, (map.get(i.productName) ?? 0) + i.quantity)));
+  const top = [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  return <section className="card-elevated rounded-2xl p-4"><h2 className="mb-3 font-bold">Produtos mais vendidos</h2>{top.length === 0 ? <p className="text-sm text-muted-foreground">Sem vendas ainda.</p> : <ol className="space-y-2 text-sm">{top.map(([n, q], i) => <li key={n} className="flex justify-between rounded-xl bg-muted p-3"><span>{i + 1}. {n}</span><b>{q} un</b></li>)}</ol>}</section>;
+}
+
+function CustomerRanking({ sales, customers }: { sales: SalesList; customers: CustomerList }) {
+  const map = new Map<string, number>();
+  sales.forEach((s) => { const name = s.customerName || customers.find((c) => c.id === s.customerId)?.name || "Consumidor"; map.set(name, (map.get(name) ?? 0) + s.total); });
+  const top = [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  return <section className="card-elevated rounded-2xl p-4"><h2 className="mb-3 font-bold">Clientes que mais compram</h2>{top.length === 0 ? <p className="text-sm text-muted-foreground">Sem vendas ainda.</p> : <ol className="space-y-2 text-sm">{top.map(([n, v], i) => <li key={n} className="flex justify-between rounded-xl bg-muted p-3"><span>{i + 1}. {n}</span><b>{brl(v)}</b></li>)}</ol>}</section>;
+}
+
+function MiniCalendar({ customers }: { customers: CustomerList }) {
+  const due = customers.filter((c) => c.av && c.av.balance > 0).sort((a, b) => a.av!.dueDate.localeCompare(b.av!.dueDate));
+  return <section className="card-elevated rounded-2xl p-4"><h2 className="mb-3 font-bold">Próximos vencimentos</h2>{due.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma ficha em aberto.</p> : <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">{due.map((c) => <div key={c.id} className="flex items-center justify-between rounded-xl bg-muted p-3 text-sm"><span className="truncate">{c.name}</span><StatusBadge tone={customerStatus(c) === "atraso" ? "danger" : "warning"}>{dateOnly(c.av!.dueDate)}</StatusBadge></div>)}</div>}</section>;
+}

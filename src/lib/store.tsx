@@ -7,7 +7,7 @@ export type ParsedCommand =
   | { type: "venda"; produto: string; cor: string; tamanho: string; quantidade: number; forma_pagamento: string; valor: number; productId: string }
   | { type: "abate_av"; cliente: string; customerId: string; valor: number; forma_pagamento: string };
 
-type NewSale = Omit<Sale, "id" | "number" | "date" | "store" | "paymentStatus">;
+type NewSale = Omit<Sale, "id" | "number" | "date" | "store" | "paymentStatus"> & { store?: string };
 
 type Ctx = {
   products: Product[]; customers: Customer[]; reservations: Reservation[]; sales: Sale[];
@@ -32,7 +32,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [sales, setSales] = useState<Sale[]>(() => { try { return JSON.parse(typeof window !== "undefined" ? window.localStorage.getItem("modah:sales") || "null" : "null") ?? seedSales; } catch { return seedSales; } });
   const [store, setStore] = useState<string>(stores[0]!);
   const [online, setOnline] = useState(true);
-  const [feed, setFeed] = useState<{ id: string; text: string; at: string }[]>([]);\n\n  useEffect(() => { window.localStorage.setItem("modah:products", JSON.stringify(products)); }, [products]);\n  useEffect(() => { window.localStorage.setItem("modah:customers", JSON.stringify(customers)); }, [customers]);\n  useEffect(() => { window.localStorage.setItem("modah:sales", JSON.stringify(sales)); }, [sales]);
+  const [feed, setFeed] = useState<{ id: string; text: string; at: string }[]>([]);
+
+  useEffect(() => { window.localStorage.setItem("modah:products", JSON.stringify(products)); }, [products]);
+  useEffect(() => { window.localStorage.setItem("modah:customers", JSON.stringify(customers)); }, [customers]);
+  useEffect(() => { window.localStorage.setItem("modah:sales", JSON.stringify(sales)); }, [sales]);
 
   const push = useCallback((text: string) => {
     const entry = { id: crypto.randomUUID(), text, at: new Date().toISOString() };
@@ -64,7 +68,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const number = sales.reduce((max, s) => Math.max(max, s.number), 1000) + 1;
     const date = new Date().toISOString();
     const record: Sale = {
-      ...sale, id: crypto.randomUUID(), number, date, store,
+      ...sale, id: crypto.randomUUID(), number, date, store: sale.store || store,
       paymentStatus: sale.paymentMethod === "Ficha (AV)" && sale.amountPaid < sale.total ? "pendente" : "pago",
     };
     setSales((prev) => [record, ...prev]);
@@ -102,7 +106,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return returned || sold ? { ...v, qty: v.qty + returned - sold } : v;
       }) };
     }));
-    const record: Sale = { ...sale, id, number: old.number, date: old.date, store, paymentStatus: sale.paymentMethod === "Ficha (AV)" && sale.amountPaid < sale.total ? "pendente" : "pago" };
+    const record: Sale = { ...sale, id, number: old.number, date: old.date, store: sale.store || store, paymentStatus: sale.paymentMethod === "Ficha (AV)" && sale.amountPaid < sale.total ? "pendente" : "pago" };
     setSales((prev) => prev.map((s) => s.id === id ? record : s));
     if (sale.customerId) {
       setCustomers((prev) => prev.map((c) => c.id === sale.customerId ? { ...c, purchases: [{ id, date: old.date, items: sale.items.map((i) => i.productName + " " + i.color + " " + i.size + " x" + i.quantity).join(", "), price: sale.total, method: sale.paymentMethod }, ...c.purchases.filter((p) => p.id !== id)] } : c));
