@@ -17,10 +17,10 @@ import { useStore } from "@/lib/store";
 import { brl } from "@/lib/format";
 import type { Product, ProductDetails } from "@/lib/mock-data";
 
-type Form = ProductDetails & { name: string; price: number; minStock: number; photo: string };
+type Form = ProductDetails & { name: string; price: number; minStock: number; photo: string; variations: Product["variations"] };
 
 const empty = (): Form => ({
-  name: "", price: 0, minStock: 0, photo: "",
+  name: "", price: 0, minStock: 0, photo: "", variations: [{ color: "Única", size: "M", qty: 0, reserved: 0, inBag: 0 }],
   barcode: "", unit: "UN", cost: 0, margin: 0, wholesale: 0, group: "", subgroup: "",
   supplier: "", warranty: "", brand: "", reference: "", validity: "", commission: 0,
   location: "", hasGrid: false, notes: "", stock: 0, inactive: false,
@@ -31,13 +31,16 @@ const fromProduct = (p: Product): Form => ({
   group: p.category,
   stock: p.variations.reduce((s, v) => s + v.qty, 0),
   ...p.details,
-  name: p.name, price: p.price, minStock: p.minStock, photo: p.photo,
+  name: p.name, price: p.price, minStock: p.minStock, photo: p.photo, variations: p.variations,
 });
 
 export function SalesSection() {
   const { products, addProduct, updateProduct, deleteProduct } = useStore();
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [form, setForm] = useState<Form>(empty());
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("Todos");
+  const [status, setStatus] = useState<"todos"|"ativos"|"inativos"|"baixo">("todos");
 
   const open = (p?: Product) => {
     setForm(p ? fromProduct(p) : empty());
@@ -45,12 +48,12 @@ export function SalesSection() {
   };
 
   const save = () => {
-    const { name, price, minStock, photo, ...details } = form;
+    const { name, price, minStock, photo, variations, ...details } = form;
     if (!name.trim()) return;
     if (editing === "new") {
       addProduct({
         name, price, minStock, photo, category: details.group || "Geral", tags: [],
-        variations: [{ color: "Única", size: "M", qty: details.stock, reserved: 0, inBag: 0 }],
+        variations: variations.length ? variations : [{ color: "Única", size: "M", qty: details.stock, reserved: 0, inBag: 0 }],
         details,
       });
     } else if (editing) {
@@ -59,18 +62,31 @@ export function SalesSection() {
     setEditing(null);
   };
 
+  const categories = ["Todos", ...Array.from(new Set(products.map(p => p.category))).sort()];
+  const filtered = products.filter(p => {
+    const matchesSearch = !search || [p.name, p.category, p.details?.barcode, p.details?.brand, p.details?.reference].join(" ").toLowerCase().includes(search.toLowerCase());
+    const total = p.variations.reduce((n,v)=>n+v.qty,0);
+    const matchesCategory = category === "Todos" || p.category === category;
+    const matchesStatus = status === "todos" || (status === "ativos" && !p.details?.inactive) || (status === "inativos" && !!p.details?.inactive) || (status === "baixo" && total <= p.minStock);
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
+  const totalUnits = products.reduce((n,p)=>n+p.variations.reduce((a,v)=>a+v.qty,0),0);
+  const lowStock = products.filter(p=>p.variations.reduce((n,v)=>n+v.qty,0)<=p.minStock).length;
+
   return (
     <section className="card-elevated rounded-2xl p-4">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-bold">Produtos</h2>
-        <Button size="icon" aria-label="Cadastrar produto" onClick={() => open()}>
-          <Plus className="h-5 w-5" />
-        </Button>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div><h2 className="font-bold">Produtos</h2><p className="text-xs text-muted-foreground">{products.length} produtos · {totalUnits} unidades · {lowStock} abaixo do mínimo</p></div>
+        <Button onClick={() => open()}><Plus className="h-4 w-4" /> Novo produto</Button>
       </div>
-
+      <div className="mb-4 grid gap-2 md:grid-cols-[1fr_180px_160px]">
+        <Input placeholder="Buscar por nome, código, marca..." value={search} onChange={e=>setSearch(e.target.value)} />
+        <select className="h-10 rounded-md border bg-background px-3" value={category} onChange={e=>setCategory(e.target.value)}>{categories.map(x=><option key={x}>{x}</option>)}</select>
+        <select className="h-10 rounded-md border bg-background px-3" value={status} onChange={e=>setStatus(e.target.value as typeof status)}><option value="todos">Todos os status</option><option value="ativos">Ativos</option><option value="inativos">Inativos</option><option value="baixo">Estoque baixo</option></select>
+      </div>
       <div className="divide-y divide-border">
-        {products.map((p) => (
-          <div key={p.id} className="group flex items-center gap-3 py-3">
+        {filtered.length===0 ? <p className="py-8 text-center text-sm text-muted-foreground">Nenhum produto encontrado.</p> : filtered.map((p) => (
+          <div key={p.id} className="group flex flex-wrap items-center gap-3 py-3">
             <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-muted">
               {p.photo ? (
                 <img src={p.photo} alt={p.name} className="h-full w-full object-cover" />
@@ -81,11 +97,11 @@ export function SalesSection() {
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">{p.name}</p>
               <p className="truncate text-xs text-muted-foreground">
-                {p.details?.barcode || "Sem código"} · {p.category}
+                {p.details?.barcode || "Sem código"} · {p.category} · {p.variations.length} variações · {p.variations.reduce((n,v)=>n+v.qty,0)} un.
               </p>
             </div>
             {p.details?.inactive && <StatusBadge tone="neutral">Desativado</StatusBadge>}
-            <span className="font-semibold">{brl(p.price)}</span>
+            <div className="text-right"><span className="block font-semibold">{brl(p.price)}</span><span className={`text-xs ${p.variations.reduce((n,v)=>n+v.qty,0)<=p.minStock?"text-danger font-semibold":"text-muted-foreground"}`}>{p.variations.reduce((n,v)=>n+v.qty,0)} un.</span></div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
