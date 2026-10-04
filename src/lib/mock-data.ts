@@ -50,6 +50,7 @@ export type Customer = {
   cpf: string;
   address: string;
   preferredSize: Size;
+  birthDate: string;
   notes?: string;
   av: {
     total: number;
@@ -183,7 +184,7 @@ export const products: Product[] = [
 export const customers: Customer[] = [
   {
     id: "c1", name: "Maria Oliveira", whatsapp: "5585999120045", cpf: "042.118.330-11",
-    address: "Rua das Acácias, 210 - Aldeota, Fortaleza/CE", preferredSize: "M",
+    address: "Rua das Acácias, 210 - Aldeota, Fortaleza/CE", preferredSize: "M", birthDate: "1998-03-14",
     av: { total: 620, balance: 270, dueDate: "2026-09-10" },
     payments: [
       { id: "ap1", date: "2026-08-05T10:24:00", amount: 200, method: "Pix", balanceAfter: 420 },
@@ -197,7 +198,7 @@ export const customers: Customer[] = [
   },
   {
     id: "c2", name: "Juliana Prado", whatsapp: "5585988771230", cpf: "710.442.980-05",
-    address: "Av. Beira Mar, 1200 - Meireles, Fortaleza/CE", preferredSize: "P",
+    address: "Av. Beira Mar, 1200 - Meireles, Fortaleza/CE", preferredSize: "P", birthDate: "2001-11-02",
     av: { total: 430, balance: 430, dueDate: "2026-08-15" }, payments: [],
     purchases: [
       { id: "pu4", date: "2026-07-15T09:31:00", items: "Saia Plissada Preta 38, Cropped Preto M", price: 229.8, method: "Ficha (AV)" },
@@ -206,7 +207,7 @@ export const customers: Customer[] = [
   },
   {
     id: "c3", name: "Camila Souza", whatsapp: "5585997654321", cpf: "388.229.110-72",
-    address: "Rua Pereira Filgueiras, 88 - Centro, Fortaleza/CE", preferredSize: "G", av: null,
+    address: "Rua Pereira Filgueiras, 88 - Centro, Fortaleza/CE", preferredSize: "G", birthDate: "1996-07-21", av: null,
     payments: [{ id: "ap3", date: "2026-08-28T15:47:00", amount: 310, method: "Pix", balanceAfter: 0 }],
     purchases: [
       { id: "pu6", date: "2026-08-28T15:40:00", items: "Vestido Midi Vinho G", price: 229, method: "Pix" },
@@ -215,7 +216,7 @@ export const customers: Customer[] = [
   },
   {
     id: "c4", name: "Renata Lima", whatsapp: "5585994411882", cpf: "155.900.223-40",
-    address: "Rua Ana Bilhar, 45 - Varjota, Fortaleza/CE", preferredSize: "38",
+    address: "Rua Ana Bilhar, 45 - Varjota, Fortaleza/CE", preferredSize: "38", birthDate: "1999-01-30",
     av: { total: 980, balance: 180, dueDate: "2026-09-22" },
     payments: [
       { id: "ap4", date: "2026-08-01T12:00:00", amount: 500, method: "Pix", balanceAfter: 480 },
@@ -225,7 +226,7 @@ export const customers: Customer[] = [
   },
   {
     id: "c5", name: "Patrícia Gomes", whatsapp: "5585993330011", cpf: "900.334.221-18",
-    address: "Rua Silva Jatahy, 300 - Meireles, Fortaleza/CE", preferredSize: "GG",
+    address: "Rua Silva Jatahy, 300 - Meireles, Fortaleza/CE", preferredSize: "GG", birthDate: "1994-12-08",
     av: { total: 250, balance: 250, dueDate: "2026-07-30" }, payments: [],
     purchases: [{ id: "pu9", date: "2026-06-30T13:15:00", items: "Saia Caramelo 40, Regata Preta P", price: 199.8, method: "Ficha (AV)" }],
   },
