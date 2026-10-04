@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, Minus, MessageCircle, CalendarDays, Pencil } from "lucide-react";
+import { ArrowLeft, Minus, MessageCircle, CalendarDays, Pencil, Download, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,12 +32,44 @@ export function CustomerLedger({ customer, onBack, onEdit }: { customer: Custome
   const late = customerStatus(customer) === "atraso";
   const value = Number(amount.replace(",", ".")) || 0;
 
+  const exportText = useMemo(() => {
+    const situacao = quitada ? "Quitada" : late ? "Em atraso" : "Em dia";
+    const lines: string[] = [
+      `FICHA DO CLIENTE — ${customer.name}`,
+      `Telefone: ${customer.whatsapp}`,
+      `Situação: ${situacao}`,
+      customer.notes ? `Obs: ${customer.notes}` : "",
+      "",
+      "LANÇAMENTOS",
+      ...rows.flatMap((r) => {
+        const mark = r.first ? "T=" : r.kind === "compra" ? "+" : "−";
+        const base = `${mark} ${brl(r.amount)} (${dateTime(r.date)}) ${r.label}`;
+        return r.first ? [base] : [base, `${r.kind === "compra" ? "T=" : "R="} ${brl(r.result)}`];
+      }),
+      "",
+      `TOTAL DEVEDOR: ${brl(balance)}`,
+    ].filter((l) => l !== "");
+    return lines.join("\n");
+  }, [customer, rows, balance, quitada, late]);
+
+  const downloadLedger = () => {
+    const blob = new Blob([exportText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `ficha-${customer.name.toLowerCase().replace(/\s+/g, "-")}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const whatsappShare = `https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(exportText)}`;
+
   return (
     <section className="card-elevated rounded-2xl p-4 md:p-6">
       <Button variant="ghost" size="sm" onClick={onBack} className="mb-2">
         <ArrowLeft className="h-4 w-4" /> Clientes
       </Button>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-bold uppercase tracking-wide">Ficha do Cliente</h2><Button variant="outline" size="sm" onClick={onEdit}><Pencil className="h-4 w-4" /> Editar cliente</Button></div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-bold uppercase tracking-wide">Ficha do Cliente</h2><div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={downloadLedger}><Download className="h-4 w-4" /> Baixar ficha</Button><Button asChild variant="outline" size="sm"><a href={whatsappShare} target="_blank" rel="noreferrer"><Send className="h-4 w-4" /> Enviar por WhatsApp</a></Button><Button variant="outline" size="sm" onClick={onEdit}><Pencil className="h-4 w-4" /> Editar cliente</Button></div></div>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl bg-muted p-3"><p className="text-xs text-muted-foreground">Nascimento</p><b>{customer.birthDate ? new Date(customer.birthDate + "T12:00:00").toLocaleDateString("pt-BR") : "Não informado"}</b></div>
