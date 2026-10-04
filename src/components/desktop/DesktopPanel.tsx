@@ -9,6 +9,7 @@ import { customerStatus, useStore } from "@/lib/store";
 import { brl, dateOnly, dateTime } from "@/lib/format";
 import { CustomerLedger } from "./CustomerLedger";
 import { ProductsSection } from "./ProductsSection";
+import { NewCustomerDialog } from "./NewCustomerDialog";
 import { SalesPage } from "./SalesPage";
 
 const NAV = [
@@ -25,6 +26,7 @@ export function DesktopPanel() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [tab, setTab] = useState<"todos" | "atraso">("todos");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [newCustomerOpen, setNewCustomerOpen] = useState(false);
   const selected = customers.find((c) => c.id === selectedId) ?? null;
 
   useEffect(() => {
@@ -60,7 +62,7 @@ export function DesktopPanel() {
 
       {section === "fichas" && selected && <CustomerLedger customer={selected} onBack={() => setSelectedId(null)} />}
       {section === "fichas" && !selected && <section className="card-elevated overflow-x-auto rounded-2xl p-4">
-        <div className="mb-3 flex gap-2">{(["todos","atraso"] as const).map((t) => <button key={t} onClick={() => setTab(t)} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${tab === t ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{t === "todos" ? `Todos os clientes (${customers.length})` : `Em atraso (${overdue.length})`}</button>)}</div>
+        <div className="mb-3 flex items-center justify-between gap-2"><div className="flex gap-2">{(["todos","atraso"] as const).map((t) => <button key={t} onClick={() => setTab(t)} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${tab === t ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{t === "todos" ? `Todos os clientes (${customers.length})` : `Em atraso (${overdue.length})`}</button>)}</div>
         <Table><TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Telefone</TableHead><TableHead>Situação</TableHead><TableHead>Saldo Devedor</TableHead></TableRow></TableHeader><TableBody>{list.map((c) => <TableRow key={c.id} className="cursor-pointer" onClick={() => openCustomer(c.id)}><TableCell className="font-medium text-primary">{c.name}</TableCell><TableCell>{c.whatsapp}</TableCell><TableCell>{customerStatus(c) === "atraso" ? <StatusBadge tone="danger">Em atraso</StatusBadge> : <StatusBadge tone="success">Em dia</StatusBadge>}</TableCell><TableCell className="font-semibold">{brl(c.av?.balance ?? 0)}</TableCell></TableRow>)}</TableBody></Table>
       </section>}
 
@@ -71,7 +73,7 @@ export function DesktopPanel() {
       </>}
 
       {section === "dashboard" && <ProductTable products={products} updateProduct={updateProduct} />}
-      {section === "fechamento" && <section className="card-elevated rounded-2xl p-4"><h2 className="mb-3 font-bold">Relatório de Fechamento</h2><ul className="space-y-2 text-sm"><li className="flex justify-between rounded-xl bg-muted p-3"><span>Vendas</span><b>{brl(totals.vendas)}</b></li><li className="flex justify-between rounded-xl bg-muted p-3"><span>Recebido</span><b>{brl(totals.arrecadado)}</b></li><li className="flex justify-between rounded-xl bg-muted p-3"><span>Peças</span><b>{totals.pecas}</b></li><li className="flex justify-between rounded-xl bg-muted p-3"><span>Fichas em atraso</span><b>{overdue.length}</b></li></ul></section>}
+      {section === "fichas" && !selected && <NewCustomerDialog open={newCustomerOpen} onOpenChange={setNewCustomerOpen} />}\n\n      {section === "fechamento" && <section className="card-elevated rounded-2xl p-4"><h2 className="mb-3 font-bold">Relatório de Fechamento</h2><ul className="space-y-2 text-sm"><li className="flex justify-between rounded-xl bg-muted p-3"><span>Vendas</span><b>{brl(totals.vendas)}</b></li><li className="flex justify-between rounded-xl bg-muted p-3"><span>Recebido</span><b>{brl(totals.arrecadado)}</b></li><li className="flex justify-between rounded-xl bg-muted p-3"><span>Peças</span><b>{totals.pecas}</b></li><li className="flex justify-between rounded-xl bg-muted p-3"><span>Fichas em atraso</span><b>{overdue.length}</b></li></ul></section>}
     </main>
   </div>;
 }
