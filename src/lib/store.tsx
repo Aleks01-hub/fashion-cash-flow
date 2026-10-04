@@ -42,18 +42,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const createSale = useCallback((sale: NewSale) => {
     if (!sale.items.length || sale.total <= 0) { toast.error("Adicione itens e um valor válido."); return false; }
-    let valid = true;
-    setProducts((prev) => {
-      const next = prev.map((p) => ({ ...p, variations: p.variations.map((v) => ({ ...v })) }));
-      for (const item of sale.items) {
-        const product = next.find((p) => p.id === item.productId);
-        const variation = product?.variations.find((v) => v.color === item.color && v.size === item.size);
-        if (!product || !variation || variation.qty < item.quantity) { valid = false; break; }
-        variation.qty -= item.quantity;
-      }
-      return valid ? next : prev;
-    });
-    if (!valid) { toast.error("Estoque insuficiente para concluir a venda."); return false; }
+    const stock = new Map<string, number>();
+    for (const item of sale.items) {
+      const key = item.productId + "|" + item.color + "|" + item.size;
+      const product = products.find((p) => p.id === item.productId);
+      const variation = product?.variations.find((v) => v.color === item.color && v.size === item.size);
+      const available = variation?.qty ?? 0;
+      const used = stock.get(key) ?? 0;
+      if (!variation || available - used < item.quantity) { toast.error("Estoque insuficiente para concluir a venda."); return false; }
+      stock.set(key, used + item.quantity);
+    }
+    setProducts((prev) => prev.map((p) => ({
+      ...p,
+      variations: p.variations.map((v) => {
+        const key = p.id + "|" + v.color + "|" + v.size;
+        const sold = stock.get(key) ?? 0;
+        return sold ? { ...v, qty: v.qty - sold } : v;
+      }),
+    })));
 
     const number = sales.reduce((max, s) => Math.max(max, s.number), 1000) + 1;
     const date = new Date().toISOString();
@@ -82,7 +88,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
     push("Venda #" + number + " registrada — " + brl(sale.total) + " (" + sale.paymentMethod + ")");
     return true;
-  }, [push, sales, store]);
+  }, [push, products, sales, store]);
 
   const cancelSale = useCallback((id: string) => {
     const sale = sales.find((s) => s.id === id);
