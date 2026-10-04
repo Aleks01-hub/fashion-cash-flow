@@ -7,7 +7,7 @@ import { ReservationsScreen } from "./ReservationsScreen";
 
 const TABS = [
   { id: "vender", label: "Vender", icon: ShoppingCart },
-  { id: "fichas", label: "Fichas", icon: Users },
+  { id: "fichas", label: "Clientes", icon: Users },
   { id: "estoque", label: "Estoque", icon: Shirt },
   { id: "reservas", label: "Reservas", icon: ShoppingBasket },
 ] as const;
