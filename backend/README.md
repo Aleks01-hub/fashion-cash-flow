@@ -16,7 +16,7 @@ Na raiz:
 ```bash
 docker compose up -d
 cd backend
-./mvnw spring-boot:run
+mvn spring-boot:run
 ```
 
 O frontend atual continua funcionando localmente; esta API é a base para migrar os dados do localStorage para persistência centralizada.
