@@ -57,7 +57,7 @@ export function SalesSection() {
         details,
       });
     } else if (editing) {
-      updateProduct(editing, { name, price, minStock, photo, category: details.group || "Geral", details });
+      updateProduct(editing, { name, price, minStock, photo, category: details.group || "Geral", variations, details: { ...details, stock: variations.reduce((n, v) => n + v.qty, 0) } });
     }
     setEditing(null);
   };
@@ -206,6 +206,20 @@ function ProductForm({ form, setForm }: { form: Form; setForm: (f: Form) => void
           <Checkbox checked={form.hasGrid} onCheckedChange={(v) => set("hasGrid", !!v)} />
           Este produto possui grade/variação?
         </label>
+        <div className="col-span-2 md:col-span-6 rounded-xl border p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <div><Label className="text-xs">Grade / Variações</Label><p className="text-xs text-muted-foreground">Controle cor, tamanho e quantidade de cada variação.</p></div>
+            <Button type="button" size="sm" variant="outline" onClick={() => setForm({...form, variations:[...form.variations,{color:"",size:"M",qty:0,reserved:0,inBag:0}]})}><Plus className="h-4 w-4" /> Adicionar</Button>
+          </div>
+          <div className="space-y-2">
+            {form.variations.map((v, i) => <div key={i} className="grid gap-2 sm:grid-cols-[1fr_110px_110px_auto]">
+              <Input placeholder="Cor" value={v.color} onChange={e=>{const variations=[...form.variations]; variations[i]={...v,color:e.target.value}; setForm({...form,variations})}} />
+              <select className="h-10 rounded-md border bg-background px-3" value={v.size} onChange={e=>{const variations=[...form.variations]; variations[i]={...v,size:e.target.value as Product["variations"][number]["size"]}; setForm({...form,variations})}}>{["PP","P","M","G","GG","36","38","40","42","44","46","48"].map(x=><option key={x}>{x}</option>)}</select>
+              <Input type="number" min="0" placeholder="Quantidade" value={v.qty || ""} onChange={e=>{const variations=[...form.variations]; variations[i]={...v,qty:Number(e.target.value)||0}; setForm({...form,variations,stock:variations.reduce((n,x)=>n+x.qty,0)})}} />
+              <Button type="button" variant="ghost" size="icon" disabled={form.variations.length===1} onClick={()=>setForm({...form,variations:form.variations.filter((_,idx)=>idx!==i)})}><Trash2 className="h-4 w-4 text-danger" /></Button>
+            </div>)}
+          </div>
+        </div>
         <div className="col-span-2 md:col-span-4">
           <Label className="text-xs">Observações</Label>
           <Textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} />
