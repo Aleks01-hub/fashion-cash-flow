@@ -32,6 +32,7 @@ export function ProfileSettingsSection() {
   const [newUser,setNewUser]=useState("");
   const [newRole,setNewRole]=useState<UserItem["role"]>("Vendedor");
   const [saved,setSaved]=useState(false);
+  useEffect(()=>{ localStorage.setItem("modah:users",JSON.stringify(users)); },[users]);
 
   useEffect(()=>{
     const dark = settings.theme === "dark" || (settings.theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
