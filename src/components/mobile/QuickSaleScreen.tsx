@@ -65,6 +65,7 @@ export function QuickSaleScreen() {
   const [dueDate, setDueDate] = useState("");
   const [newCustomerOpen, setNewCustomerOpen] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: "", whatsapp: "" });
+  const [cartOpen, setCartOpen] = useState(false);
 
   const selectedCustomer = customers.find((c) => c.id === selectedCustomerId) ?? null;
   const activeProducts = useMemo(() => products.filter((p) => !p.details?.inactive), [products]);
@@ -411,6 +412,34 @@ export function QuickSaleScreen() {
       <Button size="lg" className="h-14 w-full rounded-2xl text-base font-bold" disabled={!canFinish} onClick={finishSale}>
         <CheckCircle2 className="h-5 w-5" /> Finalizar venda · {brl(total)}
       </Button>
+
+      {cart.length > 0 && (
+        <button type="button" onClick={() => setCartOpen(true)} className="fixed bottom-20 right-4 z-40 flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 shadow-xl active:scale-95" aria-label="Abrir carrinho">
+          <span className="relative flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <ShoppingCart className="h-5 w-5" />
+            <span className="absolute -right-1 -top-2 flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-card bg-destructive px-1 text-[11px] font-bold text-destructive-foreground">{cart.reduce((n, item) => n + item.quantity, 0)}</span>
+          </span>
+          <span className="text-left"><span className="block text-[11px] text-muted-foreground">Carrinho</span><span className="block text-base font-black">{brl(total)}</span></span>
+        </button>
+      )}
+
+      <Dialog open={cartOpen} onOpenChange={setCartOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Carrinho · {cart.reduce((n, item) => n + item.quantity, 0)} itens</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            {cart.map((item) => (
+              <div key={item.key} className="rounded-xl border border-border p-3">
+                <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-semibold">{item.productName}</p><p className="text-xs text-muted-foreground">{item.color} · {item.size} · {brl(item.unitPrice)}</p></div>
+                  <button type="button" onClick={() => setCart((current) => current.filter((x) => x.key !== item.key))} className="p-1 text-muted-foreground"><Trash2 className="h-4 w-4" /></button>
+                </div>
+                <div className="mt-2 flex items-center justify-between"><div className="flex items-center gap-2"><Button size="icon" variant="outline" onClick={() => updateQuantity(item.key, -1)}><Minus className="h-4 w-4" /></Button><span className="w-8 text-center font-bold">{item.quantity}</span><Button size="icon" variant="outline" onClick={() => updateQuantity(item.key, 1)}><Plus className="h-4 w-4" /></Button></div><span className="font-bold">{brl(item.unitPrice * item.quantity)}</span></div>
+              </div>
+            ))}
+          </div>
+          <div className="border-t pt-3"><div className="flex items-center justify-between text-lg font-black"><span>Total</span><span className="text-primary">{brl(total)}</span></div></div>
+          <DialogFooter><Button className="w-full" onClick={() => setCartOpen(false)}>Voltar para venda</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <section className="card-elevated rounded-2xl p-4">
         <div className="mb-3 flex items-center gap-2"><ReceiptText className="h-4 w-4 text-primary" /><h2 className="font-bold">Últimas vendas</h2></div>
