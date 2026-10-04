@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { customers as seedCustomers, products as seedProducts, reservations as seedReservations, sales as seedSales, stores, type Customer, type Product, type Reservation, type Sale, type SalePaymentMethod } from "./mock-data";
 import { brl, isOverdue } from "./format";
@@ -26,13 +26,13 @@ type Ctx = {
 const StoreContext = createContext<Ctx | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<Product[]>(seedProducts);
-  const [customers, setCustomers] = useState<Customer[]>(seedCustomers);
+  const [products, setProducts] = useState<Product[]>(() => { try { return JSON.parse(localStorage.getItem("modah:products") || "null") ?? seedProducts; } catch { return seedProducts; } });
+  const [customers, setCustomers] = useState<Customer[]>(() => { try { return JSON.parse(localStorage.getItem("modah:customers") || "null") ?? seedCustomers; } catch { return seedCustomers; } });
   const [reservations] = useState<Reservation[]>(seedReservations);
-  const [sales, setSales] = useState<Sale[]>(seedSales);
+  const [sales, setSales] = useState<Sale[]>(() => { try { return JSON.parse(localStorage.getItem("modah:sales") || "null") ?? seedSales; } catch { return seedSales; } });
   const [store, setStore] = useState<string>(stores[0]!);
   const [online, setOnline] = useState(true);
-  const [feed, setFeed] = useState<{ id: string; text: string; at: string }[]>([]);
+  const [feed, setFeed] = useState<{ id: string; text: string; at: string }[]>([]);\n\n  useEffect(() => { localStorage.setItem("modah:products", JSON.stringify(products)); }, [products]);\n  useEffect(() => { localStorage.setItem("modah:customers", JSON.stringify(customers)); }, [customers]);\n  useEffect(() => { localStorage.setItem("modah:sales", JSON.stringify(sales)); }, [sales]);
 
   const push = useCallback((text: string) => {
     const entry = { id: crypto.randomUUID(), text, at: new Date().toISOString() };
