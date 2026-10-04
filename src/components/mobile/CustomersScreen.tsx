@@ -16,6 +16,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { customerStatus, useStore } from "@/lib/store";
 import type { Customer, Size } from "@/lib/mock-data";
 import { brl, dateOnly, dateTime } from "@/lib/format";
+import { printCustomerPdf } from "@/lib/customer-pdf";
 
 const FILTERS = [
   { id: "all", label: "Todas as Fichas" },
@@ -224,8 +225,8 @@ export function CustomerDetail({ customer, onBack }: { customer: Customer; onBac
           </StatusBadge>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button variant="outline" onClick={downloadCustomerFile}>
-            <Download className="h-4 w-4" /> Baixar ficha
+          <Button variant="outline" onClick={() => printCustomerPdf(customer)}>
+            <Download className="h-4 w-4" /> Baixar PDF
           </Button>
           <Button asChild variant="outline">
             <a href={whatsappShare} target="_blank" rel="noreferrer">
