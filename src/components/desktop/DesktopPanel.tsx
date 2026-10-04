@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, BarChart3, Boxes, LayoutDashboard, MessageCircle, Radio, Users, Menu, ShoppingBag, X, Package, Wallet as WalletIcon, Cake } from "lucide-react";
+import { AlertTriangle, BarChart3, Boxes, LayoutDashboard, MessageCircle, Radio, Users, Menu, ShoppingBag, X, Package, Wallet as WalletIcon, Cake, Settings, UserCircle } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { ProductsSection } from "./ProductsSection";
 import { NewCustomerDialog } from "./NewCustomerDialog";
 import { SalesPage } from "./SalesPage";
 import { OperationsSection } from "./OperationsSection";
+import { ProfileSettingsSection } from "./ProfileSettingsSection";
 
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -20,6 +21,7 @@ const NAV = [
   { id: "vendas", label: "Vendas", icon: ShoppingBag },
   { id: "produtos", label: "Produtos", icon: Package },
   { id: "fechamento", label: "Gestão", icon: BarChart3 },
+  { id: "configuracoes", label: "Configurações", icon: Settings },
 ] as const;
 
 export function DesktopPanel() {
@@ -29,6 +31,8 @@ export function DesktopPanel() {
   const [tab, setTab] = useState<"todos" | "atraso">("todos");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [newCustomerOpen, setNewCustomerOpen] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [profileName, setProfileName] = useState(() => typeof window === "undefined" ? "Alex" : (() => { try { return JSON.parse(window.localStorage.getItem("modah:profile") || "null")?.name || "Alex"; } catch { return "Alex"; } })());
   const selected = customers.find((c) => c.id === selectedId) ?? null;
 
   useEffect(() => {
@@ -42,7 +46,9 @@ export function DesktopPanel() {
 
   useEffect(() => {
     const t = setTimeout(() => toast("Monitor em tempo real", { description: "Sistema pronto para registrar vendas e movimentações." }), 2500);
-    return () => clearTimeout(t);
+    const onProfile = () => { try { setProfileName(JSON.parse(window.localStorage.getItem("modah:profile") || "null")?.name || "Alex"); } catch {} };
+    window.addEventListener("modah:profile-updated", onProfile);
+    return () => { clearTimeout(t); window.removeEventListener("modah:profile-updated", onProfile); };
   }, []);
 
   const overdue = customers.filter((c) => customerStatus(c) === "atraso");
@@ -56,12 +62,12 @@ export function DesktopPanel() {
 
   const go = (id: (typeof NAV)[number]["id"]) => { setSection(id); setSelectedId(null); setMenuOpen(false); };
   const openCustomer = (id: string) => { setSection("fichas"); setSelectedId(id); };
-  const list = tab === "atraso" ? overdue : customers;
+  const list = (tab === "atraso" ? overdue : customers).filter(c => !customerSearch || [c.name,c.whatsapp,c.cpf,c.address].join(" ").toLowerCase().includes(customerSearch.toLowerCase()));
 
   return <div className="relative min-h-screen">
     {menuOpen && <div className="fixed inset-0 z-40 bg-foreground/30" onClick={() => setMenuOpen(false)} />}
     <aside className={`fixed left-0 top-0 z-50 h-full w-64 border-r border-border bg-sidebar p-4 transition-transform duration-200 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
-      <div className="mb-6 flex items-center gap-2"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-primary text-primary-foreground"><Radio className="h-4 w-4" /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">Caixa Central</p><p className="truncate text-xs text-muted-foreground">{store}</p></div><button onClick={() => setMenuOpen(false)} className="rounded-lg p-1 hover:bg-accent"><X className="h-4 w-4" /></button></div>
+      <div className="mb-4 flex items-center gap-2"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-primary text-primary-foreground"><Radio className="h-4 w-4" /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">Caixa Central</p><p className="truncate text-xs text-muted-foreground">{store}</p></div><button onClick={() => setMenuOpen(false)} className="rounded-lg p-1 hover:bg-accent"><X className="h-4 w-4" /></button></div>
       <nav className="space-y-1">{NAV.map((n) => <button key={n.id} onClick={() => go(n.id)} className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium ${section === n.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}><n.icon className="h-4 w-4 shrink-0" /><span>{n.label}</span></button>)}</nav>
     </aside>
 
@@ -73,7 +79,7 @@ export function DesktopPanel() {
 
       {section === "fichas" && selected && <CustomerLedger customer={selected} onBack={() => setSelectedId(null)} />}
       {section === "fichas" && !selected && <section className="card-elevated overflow-x-auto rounded-2xl p-4">
-        <div className="mb-3 flex items-center justify-between gap-2"><div className="flex gap-2">{(["todos","atraso"] as const).map((t) => <button key={t} onClick={() => setTab(t)} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${tab === t ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{t === "todos" ? `Todos os clientes (${customers.length})` : `Em atraso (${overdue.length})`}</button>)}</div><Button size="sm" onClick={() => setNewCustomerOpen(true)}>Novo cliente</Button></div>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div className="flex gap-2">{(["todos","atraso"] as const).map((t) => <button key={t} onClick={() => setTab(t)} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${tab === t ? "border-primary bg-primary text-primary-foreground" : "border-border"}`}>{t === "todos" ? `Todos os clientes (${customers.length})` : `Em atraso (${overdue.length})`}</button>)}</div><div className="flex gap-2"><Input className="h-9 w-56" placeholder="Buscar cliente..." value={customerSearch} onChange={e=>setCustomerSearch(e.target.value)} /><Button size="sm" onClick={() => setNewCustomerOpen(true)}>Novo cliente</Button></div></div>
         <Table><TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Telefone</TableHead><TableHead>Nascimento</TableHead><TableHead>Situação</TableHead><TableHead>Saldo Devedor</TableHead></TableRow></TableHeader><TableBody>{list.map((c) => <TableRow key={c.id} className="cursor-pointer" onClick={() => openCustomer(c.id)}><TableCell className="font-medium text-primary">{c.name}</TableCell><TableCell>{c.whatsapp}</TableCell><TableCell>{c.birthDate ? new Date(c.birthDate + "T12:00:00").toLocaleDateString("pt-BR") : "—"}</TableCell><TableCell>{customerStatus(c) === "atraso" ? <StatusBadge tone="danger">Em atraso</StatusBadge> : <StatusBadge tone="success">Em dia</StatusBadge>}</TableCell><TableCell className="font-semibold">{brl(c.av?.balance ?? 0)}</TableCell></TableRow>)}</TableBody></Table>
       </section>}
 
@@ -90,6 +96,7 @@ export function DesktopPanel() {
       {section === "fichas" && !selected && <NewCustomerDialog open={newCustomerOpen} onOpenChange={setNewCustomerOpen} />}
 
       {section === "fechamento" && <OperationsSection />}
+      {section === "configuracoes" && <ProfileSettingsSection />}
     </main>
   </div>;
 }
