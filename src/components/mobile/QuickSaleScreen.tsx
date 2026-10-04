@@ -323,7 +323,7 @@ export function QuickSaleScreen() {
         <p className="mb-3 text-sm font-bold">3. Pagamento</p>
         <div className="grid grid-cols-2 gap-2">
           {PAYMENT_OPTIONS.map(({ value, label, icon: Icon }) => (
-            <button key={value} type="button" onClick={() => { setPayment(value); if (value !== "Dinheiro" && value !== "Ficha (AV)") setPaidText(""); }} className={"flex items-center gap-2 rounded-xl border p-3 text-left " + (payment === value ? "border-primary bg-primary/10" : "border-border")}>
+            <button key={value} type="button" onClick={() => { setPayment(value); setPaidText(""); if (value !== "Ficha (AV)") setDueDate(""); }} className={"flex items-center gap-2 rounded-xl border p-3 text-left " + (payment === value ? "border-primary bg-primary/10" : "border-border")}>
               <Icon className="h-4 w-4" /><span className="text-sm font-medium">{label}</span>
             </button>
           ))}
