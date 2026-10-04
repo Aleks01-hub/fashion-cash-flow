@@ -60,6 +60,40 @@ export type Customer = {
   purchases: Purchase[];
 };
 
+export type SaleItem = {
+  id: string;
+  productId: string;
+  productName: string;
+  color: string;
+  size: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+  total: number;
+};
+
+export type SalePaymentMethod = "Pix" | "Dinheiro" | "Cartão Débito" | "Cartão Crédito" | "Ficha (AV)";
+
+export type Sale = {
+  id: string;
+  number: number;
+  date: string;
+  customerId: string | null;
+  customerName: string;
+  seller: string;
+  store: string;
+  items: SaleItem[];
+  subtotal: number;
+  discount: number;
+  total: number;
+  paymentMethod: SalePaymentMethod;
+  paymentStatus: "pago" | "pendente";
+  amountPaid: number;
+  change: number;
+  dueDate: string | null;
+  notes: string;
+};
+
 export type Reservation = {
   id: string;
   kind: "reserva" | "bag";
@@ -148,12 +182,8 @@ export const products: Product[] = [
 
 export const customers: Customer[] = [
   {
-    id: "c1",
-    name: "Maria Oliveira",
-    whatsapp: "5585999120045",
-    cpf: "042.118.330-11",
-    address: "Rua das Acácias, 210 - Aldeota, Fortaleza/CE",
-    preferredSize: "M",
+    id: "c1", name: "Maria Oliveira", whatsapp: "5585999120045", cpf: "042.118.330-11",
+    address: "Rua das Acácias, 210 - Aldeota, Fortaleza/CE", preferredSize: "M",
     av: { total: 620, balance: 270, dueDate: "2026-09-10" },
     payments: [
       { id: "ap1", date: "2026-08-05T10:24:00", amount: 200, method: "Pix", balanceAfter: 420 },
@@ -166,63 +196,62 @@ export const customers: Customer[] = [
     ],
   },
   {
-    id: "c2",
-    name: "Juliana Prado",
-    whatsapp: "5585988771230",
-    cpf: "710.442.980-05",
-    address: "Av. Beira Mar, 1200 - Meireles, Fortaleza/CE",
-    preferredSize: "P",
-    av: { total: 430, balance: 430, dueDate: "2026-08-15" },
-    payments: [],
+    id: "c2", name: "Juliana Prado", whatsapp: "5585988771230", cpf: "710.442.980-05",
+    address: "Av. Beira Mar, 1200 - Meireles, Fortaleza/CE", preferredSize: "P",
+    av: { total: 430, balance: 430, dueDate: "2026-08-15" }, payments: [],
     purchases: [
       { id: "pu4", date: "2026-07-15T09:31:00", items: "Saia Plissada Preta 38, Cropped Preto M", price: 229.8, method: "Ficha (AV)" },
       { id: "pu5", date: "2026-07-16T19:05:00", items: "Regata Branca G x2", price: 119.8, method: "Ficha (AV)" },
     ],
   },
   {
-    id: "c3",
-    name: "Camila Souza",
-    whatsapp: "5585997654321",
-    cpf: "388.229.110-72",
-    address: "Rua Pereira Filgueiras, 88 - Centro, Fortaleza/CE",
-    preferredSize: "G",
-    av: null,
-    payments: [
-      { id: "ap3", date: "2026-08-28T15:47:00", amount: 310, method: "Pix", balanceAfter: 0 },
-    ],
+    id: "c3", name: "Camila Souza", whatsapp: "5585997654321", cpf: "388.229.110-72",
+    address: "Rua Pereira Filgueiras, 88 - Centro, Fortaleza/CE", preferredSize: "G", av: null,
+    payments: [{ id: "ap3", date: "2026-08-28T15:47:00", amount: 310, method: "Pix", balanceAfter: 0 }],
     purchases: [
       { id: "pu6", date: "2026-08-28T15:40:00", items: "Vestido Midi Vinho G", price: 229, method: "Pix" },
       { id: "pu7", date: "2026-06-11T17:20:00", items: "Calça Wide Leg 42", price: 189.9, method: "Débito" },
     ],
   },
   {
-    id: "c4",
-    name: "Renata Lima",
-    whatsapp: "5585994411882",
-    cpf: "155.900.223-40",
-    address: "Rua Ana Bilhar, 45 - Varjota, Fortaleza/CE",
-    preferredSize: "38",
+    id: "c4", name: "Renata Lima", whatsapp: "5585994411882", cpf: "155.900.223-40",
+    address: "Rua Ana Bilhar, 45 - Varjota, Fortaleza/CE", preferredSize: "38",
     av: { total: 980, balance: 180, dueDate: "2026-09-22" },
     payments: [
       { id: "ap4", date: "2026-08-01T12:00:00", amount: 500, method: "Pix", balanceAfter: 480 },
       { id: "ap5", date: "2026-08-25T09:12:00", amount: 300, method: "Cartão Débito", balanceAfter: 180 },
     ],
-    purchases: [
-      { id: "pu8", date: "2026-07-30T10:00:00", items: "Kit 4 peças verão", price: 980, method: "Ficha (AV)" },
-    ],
+    purchases: [{ id: "pu8", date: "2026-07-30T10:00:00", items: "Kit 4 peças verão", price: 980, method: "Ficha (AV)" }],
   },
   {
-    id: "c5",
-    name: "Patrícia Gomes",
-    whatsapp: "5585993330011",
-    cpf: "900.334.221-18",
-    address: "Rua Silva Jatahy, 300 - Meireles, Fortaleza/CE",
-    preferredSize: "GG",
-    av: { total: 250, balance: 250, dueDate: "2026-07-30" },
-    payments: [],
-    purchases: [
-      { id: "pu9", date: "2026-06-30T13:15:00", items: "Saia Caramelo 40, Regata Preta P", price: 199.8, method: "Ficha (AV)" },
-    ],
+    id: "c5", name: "Patrícia Gomes", whatsapp: "5585993330011", cpf: "900.334.221-18",
+    address: "Rua Silva Jatahy, 300 - Meireles, Fortaleza/CE", preferredSize: "GG",
+    av: { total: 250, balance: 250, dueDate: "2026-07-30" }, payments: [],
+    purchases: [{ id: "pu9", date: "2026-06-30T13:15:00", items: "Saia Caramelo 40, Regata Preta P", price: 199.8, method: "Ficha (AV)" }],
+  },
+];
+
+export const sales: Sale[] = [
+  {
+    id: "s1", number: 1001, date: "2026-08-28T15:40:00", customerId: "c3", customerName: "Camila Souza",
+    seller: "Alex", store: "Loja Centro",
+    items: [{ id: "si1", productId: "p3", productName: "Vestido Midi Fluido", color: "Vinho", size: "G", quantity: 1, unitPrice: 229, discount: 0, total: 229 }],
+    subtotal: 229, discount: 0, total: 229, paymentMethod: "Pix", paymentStatus: "pago",
+    amountPaid: 229, change: 0, dueDate: null, notes: "",
+  },
+  {
+    id: "s2", number: 1000, date: "2026-08-25T09:12:00", customerId: "c4", customerName: "Renata Lima",
+    seller: "Alex", store: "Loja Centro",
+    items: [{ id: "si2", productId: "p2", productName: "Calça Jeans Wide Leg", color: "Azul Claro", size: "40", quantity: 1, unitPrice: 189.9, discount: 0, total: 189.9 }],
+    subtotal: 189.9, discount: 0, total: 189.9, paymentMethod: "Cartão Débito", paymentStatus: "pago",
+    amountPaid: 189.9, change: 0, dueDate: null, notes: "",
+  },
+  {
+    id: "s3", number: 999, date: "2026-08-19T18:02:00", customerId: "c1", customerName: "Maria Oliveira",
+    seller: "Alex", store: "Loja Centro",
+    items: [{ id: "si3", productId: "p4", productName: "Cropped Tricot", color: "Bege", size: "P", quantity: 1, unitPrice: 89.9, discount: 0, total: 89.9 }],
+    subtotal: 89.9, discount: 0, total: 89.9, paymentMethod: "Cartão Crédito", paymentStatus: "pago",
+    amountPaid: 89.9, change: 0, dueDate: null, notes: "",
   },
 ];
 
