@@ -42,7 +42,7 @@ export function CustomerLedger({ customer, onBack }: { customer: Customer; onBac
       <div className="grid gap-3 border-b border-border pb-4 sm:grid-cols-2">
         <div className="space-y-1 text-sm">
           <p><span className="text-muted-foreground">Nome:</span> <b>{customer.name}</b></p>
-          <p><span className="text-muted-foreground">Tel:</span> {customer.whatsapp}</p>
+          <p><span className="text-muted-foreground">Tel:</span> {customer.whatsapp}</p><p><span className="text-muted-foreground">Nascimento:</span> {customer.birthDate ? new Date(customer.birthDate + "T12:00:00").toLocaleDateString("pt-BR") : "Não informado"}</p>
         </div>
         <div className="space-y-1 text-sm">
           <p className="flex items-center gap-2">
