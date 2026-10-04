@@ -27,7 +27,7 @@ const StoreContext = createContext<Ctx | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>(() => { try { return JSON.parse(typeof window !== "undefined" ? window.localStorage.getItem("modah:products") || "null" : "null") ?? seedProducts; } catch { return seedProducts; } });
-  const [customers, setCustomers] = useState<Customer[]>(() => { try { return JSON.parse(typeof window !== "undefined" ? window.localStorage.getItem("modah:customers") || "null" : "null") ?? seedCustomers; } catch { return seedCustomers; } });
+  const [customers, setCustomers] = useState<Customer[]>(() => { try { const saved = JSON.parse(typeof window !== "undefined" ? window.localStorage.getItem("modah:customers") || "null" : "null") ?? seedCustomers; return saved.map((c: Customer) => ({ ...c, birthDate: c.birthDate || c.notes?.match(/Nascimento:\\s*(\\d{4}-\\d{2}-\\d{2})/)?.[1] || "" })); } catch { return seedCustomers; } });
   const [reservations] = useState<Reservation[]>(seedReservations);
   const [sales, setSales] = useState<Sale[]>(() => { try { return JSON.parse(typeof window !== "undefined" ? window.localStorage.getItem("modah:sales") || "null" : "null") ?? seedSales; } catch { return seedSales; } });
   const [store, setStore] = useState<string>(stores[0]!);
