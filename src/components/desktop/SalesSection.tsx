@@ -54,7 +54,7 @@ export function SalesSection() {
       addProduct({
         name, price, minStock, photo, category: details.group || "Geral", tags: [],
         variations: variations.length ? variations : [{ color: "Única", size: "M", qty: details.stock, reserved: 0, inBag: 0 }],
-        details,
+        details: { ...details, stock: variations.reduce((n, v) => n + v.qty, 0) },
       });
     } else if (editing) {
       updateProduct(editing, { name, price, minStock, photo, category: details.group || "Geral", variations, details: { ...details, stock: variations.reduce((n, v) => n + v.qty, 0) } });
