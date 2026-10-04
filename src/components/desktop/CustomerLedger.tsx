@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/StatusBadge";
 import { customerStatus, useStore } from "@/lib/store";
 import { brl, dateTime } from "@/lib/format";
+import { printCustomerPdf } from "@/lib/customer-pdf";
 import type { Customer } from "@/lib/mock-data";
 
 type Entry = { id: string; date: string; kind: "compra" | "abate"; amount: number; label: string };
@@ -69,7 +70,7 @@ export function CustomerLedger({ customer, onBack, onEdit }: { customer: Custome
       <Button variant="ghost" size="sm" onClick={onBack} className="mb-2">
         <ArrowLeft className="h-4 w-4" /> Clientes
       </Button>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-bold uppercase tracking-wide">Ficha do Cliente</h2><div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={downloadLedger}><Download className="h-4 w-4" /> Baixar ficha</Button><Button asChild variant="outline" size="sm"><a href={whatsappShare} target="_blank" rel="noreferrer"><Send className="h-4 w-4" /> Enviar por WhatsApp</a></Button><Button variant="outline" size="sm" onClick={onEdit}><Pencil className="h-4 w-4" /> Editar cliente</Button></div></div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-bold uppercase tracking-wide">Ficha do Cliente</h2><div className="flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => printCustomerPdf(customer)}><Download className="h-4 w-4" /> Baixar PDF</Button><Button asChild variant="outline" size="sm"><a href={whatsappShare} target="_blank" rel="noreferrer"><Send className="h-4 w-4" /> Enviar por WhatsApp</a></Button><Button variant="outline" size="sm" onClick={onEdit}><Pencil className="h-4 w-4" /> Editar cliente</Button></div></div>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl bg-muted p-3"><p className="text-xs text-muted-foreground">Nascimento</p><b>{customer.birthDate ? new Date(customer.birthDate + "T12:00:00").toLocaleDateString("pt-BR") : "Não informado"}</b></div>
