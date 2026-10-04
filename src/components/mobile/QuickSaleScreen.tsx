@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/StatusBadge";
 import { customerStatus, useStore } from "@/lib/store";
-import type { Customer, Product, SalePaymentMethod, Size, Variation } from "@/lib/mock-data";
+import { stores, type Customer, type Product, type SalePaymentMethod, type Size, type Variation } from "@/lib/mock-data";
 import { brl, dateTime } from "@/lib/format";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type CartItem = {
   key: string;
@@ -53,7 +54,7 @@ function profileSeller() {
 }
 
 export function QuickSaleScreen() {
-  const { products, customers, sales, store, createSale, addCustomer } = useStore();
+  const { products, customers, sales, store, setStore, createSale, addCustomer } = useStore();
   const [productQuery, setProductQuery] = useState("");
   const [customerQuery, setCustomerQuery] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
@@ -205,7 +206,7 @@ export function QuickSaleScreen() {
     <div className="space-y-4 px-4 pb-28 pt-4">
       <header className="space-y-1">
         <p className="text-xs font-medium text-muted-foreground">Venda rápida · {store}</p>
-        <h1 className="text-xl font-bold">Vender</h1>
+        <div className="flex items-center justify-between gap-3"><h1 className="text-xl font-bold">Vender</h1><Select value={store} onValueChange={setStore}><SelectTrigger className="h-9 w-36 rounded-xl text-xs"><SelectValue /></SelectTrigger><SelectContent>{stores.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent></Select></div>
       </header>
 
       <div className="grid grid-cols-3 gap-2">
@@ -294,7 +295,7 @@ export function QuickSaleScreen() {
         {!selectedCustomer && (
           <div className="mt-2 space-y-2">
             {customerResults.map((c) => (
-              <button key={c.id} type="button" onClick={() => { setSelectedCustomerId(c.id); setCustomerQuery(""); }} className="flex w-full items-center justify-between gap-2 rounded-xl border border-border p-3 text-left">
+              <button key={c.id} type="button" onClick={() => { setSelectedCustomerId(c.id); setCustomerQuery(""); setDueDate(c.av?.dueDate || ""); }} className="flex w-full items-center justify-between gap-2 rounded-xl border border-border p-3 text-left">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{c.name}</p>
                   <p className="text-xs text-muted-foreground">{c.whatsapp}</p>
