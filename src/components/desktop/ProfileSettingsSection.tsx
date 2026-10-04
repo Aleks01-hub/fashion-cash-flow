@@ -30,9 +30,10 @@ export function ProfileSettingsSection() {
   const [saved,setSaved]=useState(false);
 
   useEffect(()=>{
-    document.documentElement.classList.toggle("dark", settings.theme === "dark");
-    if(settings.theme === "light") document.documentElement.classList.remove("dark");
-  },[settings.theme]);
+    const dark = settings.theme === "dark" || (settings.theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.classList.toggle("dark", dark);
+    document.title = settings.businessName || "Caixa Central";
+  },[settings.theme, settings.businessName]);
 
   const save=()=>{
     localStorage.setItem("modah:profile",JSON.stringify(profile));
