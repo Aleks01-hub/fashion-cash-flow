@@ -196,16 +196,6 @@ export function CustomerDetail({ customer, onBack }: { customer: Customer; onBac
     return lines.join("\n");
   }, [customer, st]);
 
-  const downloadCustomerFile = () => {
-    const blob = new Blob([exportText], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `ficha-${customer.name.toLowerCase().replace(/\\s+/g, "-")}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const whatsappShare = `https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(exportText)}`;
 
   return (
