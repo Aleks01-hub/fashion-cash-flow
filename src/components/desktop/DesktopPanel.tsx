@@ -12,13 +12,14 @@ import { CustomerLedger } from "./CustomerLedger";
 import { ProductsSection } from "./ProductsSection";
 import { NewCustomerDialog } from "./NewCustomerDialog";
 import { SalesPage } from "./SalesPage";
+import { OperationsSection } from "./OperationsSection";
 
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "fichas", label: "Clientes", icon: Users },
   { id: "vendas", label: "Vendas", icon: ShoppingBag },
   { id: "produtos", label: "Produtos", icon: Package },
-  { id: "fechamento", label: "Fechamento de Caixa", icon: BarChart3 },
+  { id: "fechamento", label: "Gestão", icon: BarChart3 },
 ] as const;
 
 export function DesktopPanel() {
@@ -79,7 +80,7 @@ export function DesktopPanel() {
       {section === "dashboard" && <ProductTable products={products} updateProduct={updateProduct} />}
       {section === "fichas" && !selected && <NewCustomerDialog open={newCustomerOpen} onOpenChange={setNewCustomerOpen} />}
 
-      {section === "fechamento" && <section className="card-elevated rounded-2xl p-4"><h2 className="mb-3 font-bold">Relatório de Fechamento</h2><ul className="space-y-2 text-sm"><li className="flex justify-between rounded-xl bg-muted p-3"><span>Vendas</span><b>{brl(totals.vendas)}</b></li><li className="flex justify-between rounded-xl bg-muted p-3"><span>Recebido</span><b>{brl(totals.arrecadado)}</b></li><li className="flex justify-between rounded-xl bg-muted p-3"><span>Peças</span><b>{totals.pecas}</b></li><li className="flex justify-between rounded-xl bg-muted p-3"><span>Fichas em atraso</span><b>{overdue.length}</b></li></ul></section>}
+      {section === "fechamento" && <OperationsSection />}
     </main>
   </div>;
 }
