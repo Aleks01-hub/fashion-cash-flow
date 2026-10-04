@@ -1,7 +1,6 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, Package, Plus, ShoppingCart, Truck, Wallet, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import { useStore } from "@/lib/store";
-import type { Product } from "@/lib/mock-data";
 import { brl, dateOnly, dateTime } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
