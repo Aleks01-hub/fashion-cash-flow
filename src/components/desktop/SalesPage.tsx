@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Eye, Plus, Search, X } from "lucide-react";
+import { Edit, Eye, Plus, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,7 @@ import { brl, dateTime } from "@/lib/format";
 const methods: SalePaymentMethod[] = ["Pix", "Dinheiro", "Cartão Débito", "Cartão Crédito", "Ficha (AV)"];
 
 export function SalesPage() {
-  const { sales, products, customers, store, createSale, cancelSale } = useStore();
+  const { sales, products, customers, store, createSale, updateSale, cancelSale } = useStore();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
@@ -33,13 +33,13 @@ export function SalesPage() {
         <tbody>{filtered.map((s) => <tr key={s.id} className="border-b last:border-0">
           <td className="p-3 font-semibold">#{s.number}</td><td className="p-3">{dateTime(s.date)}</td><td className="p-3">{s.customerName}</td>
           <td className="p-3">{s.items.reduce((n, i) => n + i.quantity, 0)} peça(s)</td><td className="p-3">{s.paymentMethod}</td><td className="p-3 font-bold">{brl(s.total)}</td>
-          <td className="p-3"><Button size="icon" variant="ghost" onClick={() => setSelected(s.id)}><Eye className="h-4 w-4" /></Button></td>
+          <td className="p-3 flex gap-1"><Button size="icon" variant="ghost" onClick={() => setSelected(s.id)}><Eye className="h-4 w-4" /></Button><Button size="icon" variant="ghost" onClick={() => setSelected(s.id + ":edit")}><Edit className="h-4 w-4" /></Button></td>
         </tr>)}</tbody></table>
         {!filtered.length && <p className="py-10 text-center text-sm text-muted-foreground">Nenhuma venda encontrada.</p>}
       </div>
     </div>
     <Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto"><DialogHeader><DialogTitle>Nova venda</DialogTitle></DialogHeader><NewSaleForm onDone={() => setOpen(false)} /></DialogContent></Dialog>
-    <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}><DialogContent><DialogHeader><DialogTitle>Detalhes da venda</DialogTitle></DialogHeader>{selected && <SaleDetails sale={sales.find((s) => s.id === selected)!} onCancel={() => { cancelSale(selected); setSelected(null); }} />}</DialogContent></Dialog>
+    <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}><DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto"><DialogHeader><DialogTitle>{selected?.endsWith(":edit") ? "Editar venda" : "Detalhes da venda"}</DialogTitle></DialogHeader>{selected && selected.endsWith(":edit") ? <EditSaleForm sale={sales.find((s) => s.id === selected.replace(":edit",""))!} onDone={()=>setSelected(null)} /> : selected && <SaleDetails sale={sales.find((s) => s.id === selected)!} onCancel={() => { cancelSale(selected); setSelected(null); }} />}</DialogContent></Dialog>
   </section>;
 }
 
@@ -90,4 +90,12 @@ function NewSaleForm({ onDone }: { onDone: () => void }) {
 
 function SaleDetails({ sale, onCancel }: { sale: any; onCancel: () => void }) {
   return <div className="space-y-4 text-sm"><div className="grid grid-cols-2 gap-3"><div><span className="text-muted-foreground">Venda</span><p className="font-bold">#{sale.number}</p></div><div><span className="text-muted-foreground">Data</span><p>{dateTime(sale.date)}</p></div><div><span className="text-muted-foreground">Cliente</span><p>{sale.customerName}</p></div><div><span className="text-muted-foreground">Pagamento</span><p>{sale.paymentMethod}</p></div></div><div className="rounded-xl bg-muted p-3">{sale.items.map((i: SaleItem) => <div key={i.id} className="flex justify-between border-b py-2 last:border-0"><span>{i.productName} — {i.color}/{i.size} x{i.quantity}</span><b>{brl(i.total)}</b></div>)}</div><div className="flex justify-between text-lg"><span>Total</span><b>{brl(sale.total)}</b></div><Button variant="destructive" onClick={onCancel}>Cancelar venda e estornar estoque</Button></div>;
+}
+
+
+function EditSaleForm({ sale, onDone }: { sale: any; onDone: () => void }) {
+  const { products, customers, store, updateSale } = useStore();
+  const [customerId,setCustomerId]=useState(sale.customerId||""); const [method,setMethod]=useState<SalePaymentMethod>(sale.paymentMethod); const [discount,setDiscount]=useState(sale.discount); const [paid,setPaid]=useState(sale.amountPaid); const [dueDate,setDueDate]=useState(sale.dueDate||""); const [notes,setNotes]=useState(sale.notes||"");
+  const submit=()=>{ const subtotal=sale.subtotal; const total=Math.max(0,subtotal-discount); const ok=updateSale(sale.id,{customerId:customerId||null,customerName:customers.find(c=>c.id===customerId)?.name||"Consumidor não identificado",seller:sale.seller,store,items:sale.items,subtotal,discount,total,paymentMethod:method,amountPaid:method==="Ficha (AV)"?Math.min(paid,total):Math.max(paid,total),change:Math.max(0,paid-total),dueDate:method==="Ficha (AV)"?(dueDate||null):null,notes}); if(ok) onDone(); };
+  return <div className="space-y-4"><div><Label>Cliente</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={customerId} onChange={e=>setCustomerId(e.target.value)}><option value="">Consumidor não identificado</option>{customers.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></div><div className="rounded-xl bg-muted p-3">{sale.items.map((i: SaleItem)=><div key={i.id} className="flex justify-between py-2"><span>{i.productName} — {i.color}/{i.size} x{i.quantity}</span><b>{brl(i.total)}</b></div>)}</div><div className="grid gap-3 sm:grid-cols-2"><div><Label>Desconto</Label><Input type="number" value={discount} onChange={e=>setDiscount(Number(e.target.value)||0)}/></div><div><Label>Pagamento</Label><select className="mt-1 h-10 w-full rounded-md border bg-background px-3" value={method} onChange={e=>setMethod(e.target.value as SalePaymentMethod)}>{methods.map(m=><option key={m}>{m}</option>)}</select></div><div><Label>Valor pago</Label><Input type="number" value={paid} onChange={e=>setPaid(Number(e.target.value)||0)}/></div><div><Label>Vencimento</Label><Input type="date" value={dueDate} onChange={e=>setDueDate(e.target.value)}/></div></div><div><Label>Observações</Label><textarea className="mt-1 min-h-20 w-full rounded-md border bg-background p-3" value={notes} onChange={e=>setNotes(e.target.value)}/></div><Button className="w-full" onClick={submit}>Salvar alterações</Button></div>;
 }
