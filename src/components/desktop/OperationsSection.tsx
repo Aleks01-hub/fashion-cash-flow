@@ -16,9 +16,10 @@ type User = { id:string; name:string; role:"Administrador"|"Gerente"|"Vendedor"|
 
 function usePersisted<T>(key:string, initial:T) {
   const [value,setValue] = useState<T>(() => {
-    try { return JSON.parse(localStorage.getItem(key) || "null") ?? initial; } catch { return initial; }
+    if (typeof window === "undefined") return initial;
+    try { return JSON.parse(window.localStorage.getItem(key) || "null") ?? initial; } catch { return initial; }
   });
-  const save = (next:T) => { setValue(next); localStorage.setItem(key, JSON.stringify(next)); };
+  const save = (next:T) => { setValue(next); if (typeof window !== "undefined") window.localStorage.setItem(key, JSON.stringify(next)); };
   return [value,save] as const;
 }
 
