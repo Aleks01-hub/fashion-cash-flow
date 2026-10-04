@@ -26,7 +26,7 @@ function usePersisted<T>(key:string, initial:T) {
 const tabs = [
   ["caixa","Caixa",Wallet],["estoque","Estoque",Package],["compras","Compras",ShoppingCart],
   ["fornecedores","Fornecedores",Truck],["relatorios","Relatórios",BarChart3],
-  ["trocas","Trocas",Repeat2],["eventos","Agenda",CalendarDays],["usuarios","Usuários",ShieldCheck],
+  ["eventos","Agenda",CalendarDays],["usuarios","Usuários",ShieldCheck],
 ] as const;
 
 export function OperationsSection() {
@@ -40,7 +40,6 @@ export function OperationsSection() {
     {tab==="compras" && <PurchasesTab/>}
     {tab==="fornecedores" && <SuppliersTab/>}
     {tab==="relatorios" && <ReportsTab/>}
-    {tab==="trocas" && <ExchangesTab/>}
     {tab==="eventos" && <EventsTab/>}
     {tab==="usuarios" && <UsersTab/>}
   </div>;
@@ -104,6 +103,7 @@ function ReportsTab() {
   return <section className="space-y-4"><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{[["Faturamento",brl(revenue)],["Recebido",brl(received)],["Custo estimado",brl(cost)],["Lucro bruto",brl(revenue-cost)]].map(([a,b])=><div key={a} className="card-elevated rounded-2xl p-4"><p className="text-xs text-muted-foreground">{a}</p><b className="text-xl">{b}</b></div>)}</div><div className="grid gap-3 sm:grid-cols-3"><div className="card-elevated rounded-2xl p-4">Peças vendidas <b>{sold}</b></div><div className="card-elevated rounded-2xl p-4">Estoque atual <b>{stock}</b></div><div className="card-elevated rounded-2xl p-4">Ticket médio por cliente <b>{brl(avg)}</b></div></div><div className="card-elevated rounded-2xl p-4"><h2 className="mb-3 font-bold">Produtos encalhados / estoque baixo</h2>{low.length?<ul className="space-y-2">{low.map(p=><li key={p.id} className="flex justify-between rounded-xl bg-muted p-3 text-sm"><span>{p.name}</span><b>{p.variations.reduce((n,v)=>n+v.qty,0)} un.</b></li>)}</ul>:<p className="text-sm text-muted-foreground">Nenhum produto abaixo do mínimo.</p>}</div></section>;
 }
 
+/* Trocas/devoluções ficam vinculadas ao fluxo de vendas. */
 function ExchangesTab() {
   const { sales }=useStore();
   const [items,setItems]=usePersisted<Exchange[]>("modah:exchanges",[]);
