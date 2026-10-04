@@ -41,6 +41,7 @@ export type AvPayment = {
   amount: number;
   method: string;
   balanceAfter: number;
+  saleId?: string;
 };
 
 export type Customer = {
