@@ -1,53 +1,25 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import {
-  customers as seedCustomers,
-  products as seedProducts,
-  reservations as seedReservations,
-  stores,
-  type Customer,
-  type Product,
-  type Reservation,
-} from "./mock-data";
+import { customers as seedCustomers, products as seedProducts, reservations as seedReservations, sales as seedSales, stores, type Customer, type Product, type Reservation, type Sale, type SalePaymentMethod } from "./mock-data";
 import { brl, isOverdue } from "./format";
 
 export type ParsedCommand =
-  | {
-      type: "venda";
-      produto: string;
-      cor: string;
-      tamanho: string;
-      quantidade: number;
-      forma_pagamento: string;
-      valor: number;
-      productId: string;
-    }
-  | {
-      type: "abate_av";
-      cliente: string;
-      customerId: string;
-      valor: number;
-      forma_pagamento: string;
-    };
+  | { type: "venda"; produto: string; cor: string; tamanho: string; quantidade: number; forma_pagamento: string; valor: number; productId: string }
+  | { type: "abate_av"; cliente: string; customerId: string; valor: number; forma_pagamento: string };
+
+type NewSale = Omit<Sale, "id" | "number" | "date" | "store" | "paymentStatus">;
 
 type Ctx = {
-  products: Product[];
-  customers: Customer[];
-  reservations: Reservation[];
-  store: string;
-  setStore: (s: string) => void;
-  online: boolean;
-  setOnline: (v: boolean) => void;
+  products: Product[]; customers: Customer[]; reservations: Reservation[]; sales: Sale[];
+  store: string; setStore: (s: string) => void; online: boolean; setOnline: (v: boolean) => void;
   registerSale: (c: Extract<ParsedCommand, { type: "venda" }>) => void;
+  createSale: (sale: NewSale) => boolean; cancelSale: (id: string) => boolean;
   registerAv: (c: Extract<ParsedCommand, { type: "abate_av" }>) => void;
   updateCustomer: (id: string, patch: Partial<Customer>) => void;
   addCustomer: (c: Omit<Customer, "id" | "payments" | "purchases">) => void;
   restock: (productId: string, color: string, size: string, qty: number) => void;
-  updateProduct: (id: string, patch: Partial<Product>) => void;
-  addProduct: (p: Omit<Product, "id">) => void;
-  deleteProduct: (id: string) => void;
-  addLedgerPurchase: (customerId: string, items: string, price: number) => void;
-  addLedgerPayment: (customerId: string, amount: number, method: string) => void;
+  updateProduct: (id: string, patch: Partial<Product>) => void; addProduct: (p: Omit<Product, "id">) => void; deleteProduct: (id: string) => void;
+  addLedgerPurchase: (customerId: string, items: string, price: number) => void; addLedgerPayment: (customerId: string, amount: number, method: string) => void;
   feed: { id: string; text: string; at: string }[];
 };
 
@@ -57,6 +29,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>(seedProducts);
   const [customers, setCustomers] = useState<Customer[]>(seedCustomers);
   const [reservations] = useState<Reservation[]>(seedReservations);
+  const [sales, setSales] = useState<Sale[]>(seedSales);
   const [store, setStore] = useState<string>(stores[0]!);
   const [online, setOnline] = useState(true);
   const [feed, setFeed] = useState<{ id: string; text: string; at: string }[]>([]);
@@ -67,163 +40,114 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     toast(text, { description: online ? "Sincronizado em tempo real" : "Salvo localmente (offline)" });
   }, [online]);
 
-  const registerSale = useCallback(
-    (c: Extract<ParsedCommand, { type: "venda" }>) => {
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.id !== c.productId
-            ? p
-            : {
-                ...p,
-                variations: p.variations.map((v) =>
-                  v.color === c.cor && v.size === c.tamanho
-                    ? { ...v, qty: Math.max(0, v.qty - c.quantidade) }
-                    : v,
-                ),
-              },
-        ),
-      );
-      push(`Venda registrada: ${c.produto} ${c.cor} ${c.tamanho} — ${brl(c.valor)} (${c.forma_pagamento})`);
-    },
-    [push],
-  );
+  const createSale = useCallback((sale: NewSale) => {
+    if (!sale.items.length || sale.total <= 0) { toast.error("Adicione itens e um valor válido."); return false; }
+    let valid = true;
+    setProducts((prev) => {
+      const next = prev.map((p) => ({ ...p, variations: p.variations.map((v) => ({ ...v })) }));
+      for (const item of sale.items) {
+        const product = next.find((p) => p.id === item.productId);
+        const variation = product?.variations.find((v) => v.color === item.color && v.size === item.size);
+        if (!product || !variation || variation.qty < item.quantity) { valid = false; break; }
+        variation.qty -= item.quantity;
+      }
+      return valid ? next : prev;
+    });
+    if (!valid) { toast.error("Estoque insuficiente para concluir a venda."); return false; }
 
-  const registerAv = useCallback(
-    (c: Extract<ParsedCommand, { type: "abate_av" }>) => {
-      setCustomers((prev) =>
-        prev.map((cu) => {
-          if (cu.id !== c.customerId || !cu.av) return cu;
-          const balance = Math.max(0, cu.av.balance - c.valor);
-          return {
-            ...cu,
-            av: { ...cu.av, balance },
-            payments: [
-              {
-                id: crypto.randomUUID(),
-                date: new Date().toISOString(),
-                amount: c.valor,
-                method: c.forma_pagamento,
-                balanceAfter: balance,
-              },
-              ...cu.payments,
-            ],
-          };
-        }),
-      );
-      push(`Vendedor Alex registrou abate de ${brl(c.valor)} no AV de ${c.cliente} (${c.forma_pagamento})`);
-    },
-    [push],
-  );
+    const number = sales.reduce((max, s) => Math.max(max, s.number), 1000) + 1;
+    const date = new Date().toISOString();
+    const record: Sale = {
+      ...sale, id: crypto.randomUUID(), number, date, store,
+      paymentStatus: sale.paymentMethod === "Ficha (AV)" && sale.amountPaid < sale.total ? "pendente" : "pago",
+    };
+    setSales((prev) => [record, ...prev]);
 
-  const updateCustomer = useCallback((id: string, patch: Partial<Customer>) => {
-    setCustomers((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
-  }, []);
+    if (sale.customerId) {
+      setCustomers((prev) => prev.map((c) => {
+        if (c.id !== sale.customerId) return c;
+        const itemsText = sale.items.map((i) => i.productName + " " + i.color + " " + i.size + " x" + i.quantity).join(", ");
+        if (sale.paymentMethod !== "Ficha (AV)") {
+          return { ...c, purchases: [{ id: record.id, date, items: itemsText, price: sale.total, method: sale.paymentMethod }, ...c.purchases] };
+        }
+        const av = c.av
+          ? { ...c.av, total: c.av.total + sale.total, balance: c.av.balance + Math.max(0, sale.total - sale.amountPaid) }
+          : { total: sale.total, balance: Math.max(0, sale.total - sale.amountPaid), dueDate: sale.dueDate ?? new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10) };
+        return {
+          ...c, av,
+          purchases: [{ id: record.id, date, items: itemsText, price: sale.total, method: "Ficha (AV)" }, ...c.purchases],
+          payments: sale.amountPaid > 0 ? [{ id: crypto.randomUUID(), date, amount: sale.amountPaid, method: sale.paymentMethod, balanceAfter: av.balance }, ...c.payments] : c.payments,
+        };
+      }));
+    }
+    push("Venda #" + number + " registrada — " + brl(sale.total) + " (" + sale.paymentMethod + ")");
+    return true;
+  }, [push, sales, store]);
 
-  const addCustomer = useCallback(
-    (c: Omit<Customer, "id" | "payments" | "purchases">) => {
-      setCustomers((prev) => [{ ...c, id: crypto.randomUUID(), payments: [], purchases: [] }, ...prev]);
-      push(`Nova ficha cadastrada: ${c.name}`);
-    },
-    [push],
-  );
+  const cancelSale = useCallback((id: string) => {
+    const sale = sales.find((s) => s.id === id);
+    if (!sale) return false;
+    setProducts((prev) => prev.map((p) => {
+      const items = sale.items.filter((i) => i.productId === p.id);
+      if (!items.length) return p;
+      return { ...p, variations: p.variations.map((v) => {
+        const qty = items.filter((i) => i.color === v.color && i.size === v.size).reduce((sum, i) => sum + i.quantity, 0);
+        return qty ? { ...v, qty: v.qty + qty } : v;
+      }) };
+    }));
+    setSales((prev) => prev.filter((s) => s.id !== id));
+    push("Venda #" + sale.number + " cancelada e estoque estornado");
+    return true;
+  }, [push, sales]);
 
-  const restock = useCallback(
-    (productId: string, color: string, size: string, qty: number) => {
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.id !== productId
-            ? p
-            : {
-                ...p,
-                variations: p.variations.map((v) =>
-                  v.color === color && v.size === size ? { ...v, qty: v.qty + qty } : v,
-                ),
-              },
-        ),
-      );
-      push(`Entrada de estoque (Aba de Viagem): ${color} ${size} +${qty}`);
-    },
-    [push],
-  );
+  const registerSale = useCallback((c: Extract<ParsedCommand, { type: "venda" }>) => {
+    createSale({
+      customerId: null, customerName: "Consumidor não identificado", seller: "Alex",
+      items: [{ id: crypto.randomUUID(), productId: c.productId, productName: c.produto, color: c.cor, size: c.tamanho, quantity: c.quantidade, unitPrice: c.valor / c.quantidade, discount: 0, total: c.valor }],
+      subtotal: c.valor, discount: 0, total: c.valor, paymentMethod: c.forma_pagamento as SalePaymentMethod,
+      amountPaid: c.valor, change: 0, dueDate: null, notes: "",
+    });
+  }, [createSale]);
 
-  const updateProduct = useCallback((id: string, patch: Partial<Product>) => {
-    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
-  }, []);
-  const addProduct = useCallback((p: Omit<Product, "id">) => {
-    setProducts((prev) => [{ ...p, id: crypto.randomUUID() }, ...prev]);
-  }, []);
-  const deleteProduct = useCallback((id: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
-  }, []);
+  const registerAv = useCallback((c: Extract<ParsedCommand, { type: "abate_av" }>) => {
+    setCustomers((prev) => prev.map((cu) => {
+      if (cu.id !== c.customerId || !cu.av) return cu;
+      const balance = Math.max(0, cu.av.balance - c.valor);
+      return { ...cu, av: { ...cu.av, balance }, payments: [{ id: crypto.randomUUID(), date: new Date().toISOString(), amount: c.valor, method: c.forma_pagamento, balanceAfter: balance }, ...cu.payments] };
+    }));
+    push("Vendedor Alex registrou abate de " + brl(c.valor) + " no AV de " + c.cliente + " (" + c.forma_pagamento + ")");
+  }, [push]);
 
-  const addLedgerPurchase = useCallback(
-    (customerId: string, items: string, price: number) => {
-      setCustomers((prev) =>
-        prev.map((cu) => {
-          if (cu.id !== customerId) return cu;
-          const av = cu.av
-            ? { ...cu.av, total: cu.av.total + price, balance: cu.av.balance + price }
-            : { total: price, balance: price, dueDate: new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10) };
-          return {
-            ...cu,
-            av,
-            purchases: [
-              { id: crypto.randomUUID(), date: new Date().toISOString(), items, price, method: "Ficha (AV)" },
-              ...cu.purchases,
-            ],
-          };
-        }),
-      );
-      push(`Compra na ficha: ${items} — ${brl(price)}`);
-    },
-    [push],
-  );
+  const updateCustomer = useCallback((id: string, patch: Partial<Customer>) => setCustomers((prev) => prev.map((c) => c.id === id ? { ...c, ...patch } : c)), []);
+  const addCustomer = useCallback((c: Omit<Customer, "id" | "payments" | "purchases">) => {
+    setCustomers((prev) => [{ ...c, id: crypto.randomUUID(), payments: [], purchases: [] }, ...prev]);
+    push("Nova ficha cadastrada: " + c.name);
+  }, [push]);
+  const restock = useCallback((productId: string, color: string, size: string, qty: number) => {
+    setProducts((prev) => prev.map((p) => p.id !== productId ? p : { ...p, variations: p.variations.map((v) => v.color === color && v.size === size ? { ...v, qty: v.qty + qty } : v) }));
+    push("Entrada de estoque: " + color + " " + size + " +" + qty);
+  }, [push]);
+  const updateProduct = useCallback((id: string, patch: Partial<Product>) => setProducts((prev) => prev.map((p) => p.id === id ? { ...p, ...patch } : p)), []);
+  const addProduct = useCallback((p: Omit<Product, "id">) => setProducts((prev) => [{ ...p, id: crypto.randomUUID() }, ...prev]), []);
+  const deleteProduct = useCallback((id: string) => setProducts((prev) => prev.filter((p) => p.id !== id)), []);
+  const addLedgerPurchase = useCallback((customerId: string, items: string, price: number) => {
+    setCustomers((prev) => prev.map((cu) => {
+      if (cu.id !== customerId) return cu;
+      const av = cu.av ? { ...cu.av, total: cu.av.total + price, balance: cu.av.balance + price } : { total: price, balance: price, dueDate: new Date(Date.now() + 30 * 864e5).toISOString().slice(0,10) };
+      return { ...cu, av, purchases: [{ id: crypto.randomUUID(), date: new Date().toISOString(), items, price, method: "Ficha (AV)" }, ...cu.purchases] };
+    }));
+    push("Compra na ficha: " + items + " — " + brl(price));
+  }, [push]);
+  const addLedgerPayment = useCallback((customerId: string, amount: number, method: string) => {
+    setCustomers((prev) => prev.map((cu) => {
+      if (cu.id !== customerId || !cu.av) return cu;
+      const balance = Math.max(0, cu.av.balance - amount);
+      return { ...cu, av: { ...cu.av, balance }, payments: [{ id: crypto.randomUUID(), date: new Date().toISOString(), amount, method, balanceAfter: balance }, ...cu.payments] };
+    }));
+    push("Abatimento de " + brl(amount) + " registrado (" + method + ")");
+  }, [push]);
 
-  const addLedgerPayment = useCallback(
-    (customerId: string, amount: number, method: string) => {
-      setCustomers((prev) =>
-        prev.map((cu) => {
-          if (cu.id !== customerId || !cu.av) return cu;
-          const balance = Math.max(0, cu.av.balance - amount);
-          return {
-            ...cu,
-            av: { ...cu.av, balance },
-            payments: [
-              { id: crypto.randomUUID(), date: new Date().toISOString(), amount, method, balanceAfter: balance },
-              ...cu.payments,
-            ],
-          };
-        }),
-      );
-      push(`Abatimento de ${brl(amount)} registrado (${method})`);
-    },
-    [push],
-  );
-
-  const value = useMemo(
-    () => ({
-      products,
-      customers,
-      reservations,
-      store,
-      setStore,
-      online,
-      setOnline,
-      registerSale,
-      registerAv,
-      updateCustomer,
-      addCustomer,
-      restock,
-      updateProduct,
-      addProduct,
-      deleteProduct,
-      addLedgerPurchase,
-      addLedgerPayment,
-      feed,
-    }),
-    [products, customers, reservations, store, online, registerSale, registerAv, updateCustomer, addCustomer, restock, updateProduct, addProduct, deleteProduct, addLedgerPurchase, addLedgerPayment, feed],
-  );
-
+  const value = useMemo(() => ({ products, customers, reservations, sales, store, setStore, online, setOnline, registerSale, createSale, cancelSale, registerAv, updateCustomer, addCustomer, restock, updateProduct, addProduct, deleteProduct, addLedgerPurchase, addLedgerPayment, feed }), [products, customers, reservations, sales, store, online, registerSale, createSale, cancelSale, registerAv, updateCustomer, addCustomer, restock, updateProduct, addProduct, deleteProduct, addLedgerPurchase, addLedgerPayment, feed]);
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 
@@ -233,5 +157,4 @@ export function useStore() {
   return ctx;
 }
 
-export const customerStatus = (c: Customer) =>
-  c.av && c.av.balance > 0 && isOverdue(c.av.dueDate) ? "atraso" : "em_dia";
+export const customerStatus = (c: Customer) => c.av && c.av.balance > 0 && isOverdue(c.av.dueDate) ? "atraso" : "em_dia";
