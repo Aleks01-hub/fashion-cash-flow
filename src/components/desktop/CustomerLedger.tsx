@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, Minus, MessageCircle, CalendarDays, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Minus, MessageCircle, CalendarDays, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +10,7 @@ import type { Customer } from "@/lib/mock-data";
 
 type Entry = { id: string; date: string; kind: "compra" | "abate"; amount: number; label: string };
 
-export function CustomerLedger({ customer, onBack }: { customer: Customer; onBack: () => void }) {
+export function CustomerLedger({ customer, onBack, onEdit }: { customer: Customer; onBack: () => void; onEdit: () => void }) {
   const { addLedgerPayment, updateCustomer } = useStore();
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("Pix");
@@ -37,7 +37,7 @@ export function CustomerLedger({ customer, onBack }: { customer: Customer; onBac
       <Button variant="ghost" size="sm" onClick={onBack} className="mb-2">
         <ArrowLeft className="h-4 w-4" /> Clientes
       </Button>
-      <h2 className="mb-4 text-lg font-bold uppercase tracking-wide">Ficha do Cliente</h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-bold uppercase tracking-wide">Ficha do Cliente</h2><Button variant="outline" size="sm" onClick={onEdit}><Pencil className="h-4 w-4" /> Editar cliente</Button></div>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-xl bg-muted p-3"><p className="text-xs text-muted-foreground">Nascimento</p><b>{customer.birthDate ? new Date(customer.birthDate + "T12:00:00").toLocaleDateString("pt-BR") : "Não informado"}</b></div>
