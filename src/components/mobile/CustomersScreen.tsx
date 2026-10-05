@@ -167,13 +167,20 @@ function NewCustomerDialog({
 }
 
 export function CustomerDetail({ customer, onBack }: { customer: Customer; onBack: () => void }) {
-  const { registerAv, updateCustomer } = useStore();
+  const { registerAv, updateCustomer, setAvPlan } = useStore();
   const st = customerStatus(customer);
   const [payOpen, setPayOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState(METHODS[0]!);
   const [edit, setEdit] = useState(customer);
+  const [planOpen, setPlanOpen] = useState(false);
+  const [planInstallments, setPlanInstallments] = useState(customer.av?.plan?.installments ?? 1);
+
+  const balance = customer.av?.balance ?? 0;
+  const plan = customer.av?.plan;
+  const planAmount = plan && plan.installments > 1 ? balance / plan.installments : 0;
+  const suggestions = [2, 3, 4, 6, 12].filter((n) => balance > 0 && balance / n >= 20);
 
   const exportText = useMemo(() => {
     const status = st === "atraso" ? "Em atraso" : "Em dia";
@@ -184,8 +191,9 @@ export function CustomerDetail({ customer, onBack }: { customer: Customer; onBac
       `Endereço: ${customer.address || "Não informado"}`,
       `Tamanho preferido: ${customer.preferredSize}`,
       `Situação: ${status}`,
-      `Saldo devedor: ${brl(customer.av?.balance ?? 0)}`,
+      `Saldo devedor: ${brl(balance)}`,
       customer.av ? `Vencimento: ${dateOnly(customer.av.dueDate)}` : "",
+      plan?.installments && plan.installments > 1 ? `Parcelamento: ${plan.installments}x de ${brl(planAmount)}` : "",
       "",
       "HISTÓRICO DE COMPRAS",
       ...customer.purchases.map((p) => `- ${p.items} | ${brl(p.price)} | ${dateTime(p.date)} | ${p.method}`),
@@ -194,7 +202,7 @@ export function CustomerDetail({ customer, onBack }: { customer: Customer; onBac
       ...customer.payments.map((p) => `- ${brl(p.amount)} | ${p.method} | ${dateTime(p.date)} | Saldo após: ${brl(p.balanceAfter)}`),
     ].filter(Boolean);
     return lines.join("\n");
-  }, [customer, st]);
+  }, [customer, st, balance, plan, planAmount]);
 
   const whatsappShare = `https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(exportText)}`;
 
@@ -315,6 +323,21 @@ export function CustomerDetail({ customer, onBack }: { customer: Customer; onBac
             <p className="text-sm font-bold">{customer.av ? dateOnly(customer.av.dueDate) : "—"}</p>
           </div>
         </div>
+        <div className="mb-3 rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm">
+          <div className="flex items-center justify-between gap-2"><b>{plan?.installments && plan.installments > 1 ? `${plan.installments}x de ${brl(planAmount)}` : "1x — pagamento livre"}</b><Button size="sm" variant="outline" onClick={() => setPlanOpen(true)}>Dividir / alterar</Button></div>
+          <p className="mt-1 text-xs text-muted-foreground">Novas compras entram na mesma conta e recalculam a sugestão.</p>
+        </div>
+        <Dialog open={planOpen} onOpenChange={setPlanOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Dividir a conta</DialogTitle></DialogHeader>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">Saldo atual: <b>{brl(balance)}</b></p>
+              <div className="grid grid-cols-2 gap-2">{[1, ...suggestions].map((n) => <button key={n} onClick={() => setPlanInstallments(n)} className={`rounded-xl border p-3 text-left ${planInstallments === n ? "border-primary bg-primary/10" : ""}`}><b>{n}x</b><span className="block text-xs text-muted-foreground">{n === 1 ? "Pagamento livre" : brl(balance / n) + " por parcela"}</span></button>)}</div>
+              <div><Label>Parcelas</Label><Input type="number" min="1" max="24" value={planInstallments} onChange={e => setPlanInstallments(Math.max(1, Math.min(24, Number(e.target.value) || 1)))} /></div>
+            </div>
+            <DialogFooter><Button onClick={() => { setAvPlan(customer.id, planInstallments); setPlanOpen(false); }}>Salvar divisão</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
         <Dialog open={payOpen} onOpenChange={setPayOpen}>
           <DialogTrigger asChild>
             <Button size="lg" className="mt-3 w-full" disabled={!customer.av || customer.av.balance <= 0}>
