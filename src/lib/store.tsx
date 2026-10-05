@@ -33,7 +33,8 @@ type Ctx = {
   addCustomer: (c: Omit<Customer, "id" | "payments" | "purchases">) => void;
   restock: (productId: string, color: string, size: string, qty: number, note?: string) => void;
   updateProduct: (id: string, patch: Partial<Product>) => void; addProduct: (p: Omit<Product, "id">) => void; deleteProduct: (id: string) => void;
-  addLedgerPurchase: (customerId: string, items: string, price: number) => void; addLedgerPayment: (customerId: string, amount: number, method: string) => void;\n  setAvPlan: (customerId: string, installments: number) => void;
+  addLedgerPurchase: (customerId: string, items: string, price: number) => void; addLedgerPayment: (customerId: string, amount: number, method: string) => void;
+  setAvPlan: (customerId: string, installments: number) => void;
   feed: { id: string; text: string; at: string }[];
 };
 
@@ -290,7 +291,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setCustomers((prev) => prev.map((cu) => {
       if (cu.id !== customerId) return cu;
       const av = cu.av ? { ...cu.av, total: cu.av.total + price, balance: cu.av.balance + price } : { total: price, balance: price, dueDate: new Date(Date.now() + 30 * 864e5).toISOString().slice(0,10) };
-      const next = { ...cu, av, purchases: [{ id: crypto.randomUUID(), date: new Date().toISOString(), items, price, method: "Ficha (AV)" }, ...cu.purchases] };\n      sendConfiguredWhatsApp("compra", { phone: cu.whatsapp, cliente: cu.name, valor: brl(price), saldo: brl(av.balance) });\n      return next;
+      const next = { ...cu, av, purchases: [{ id: crypto.randomUUID(), date: new Date().toISOString(), items, price, method: "Ficha (AV)" }, ...cu.purchases] };
+      sendConfiguredWhatsApp("compra", { phone: cu.whatsapp, cliente: cu.name, valor: brl(price), saldo: brl(av.balance) });
+      return next;
     }));
     push("Compra na ficha: " + items + " — " + brl(price));
   }, [push]);
@@ -303,7 +306,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       sendConfiguredWhatsApp("parcelamento", { phone: cu.whatsapp, cliente: cu.name, saldo: brl(cu.av.balance), parcelas: String(installments), parcela: installments > 1 ? brl(cu.av.balance / installments) : "pagamento livre" });
       return { ...cu, av: { ...cu.av, plan: nextPlan } };
     }));
-    setCustomers((prev) => prev);\n    push("Parcelamento da ficha atualizado");
+    push("Parcelamento da ficha atualizado");
   }, [push]);
 
   const addLedgerPayment = useCallback((customerId: string, amount: number, method: string) => {
@@ -311,7 +314,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setCustomers((prev) => prev.map((cu) => {
       if (cu.id !== customerId || !cu.av) return cu;
       const balance = Math.max(0, cu.av.balance - amount);
-      sendConfiguredWhatsApp("pagamento", { phone: cu.whatsapp, cliente: cu.name, valor: brl(amount), saldo: brl(balance) });\n      return { ...cu, av: { ...cu.av, balance }, payments: [{ id: crypto.randomUUID(), date: new Date().toISOString(), amount, method, balanceAfter: balance }, ...cu.payments] };
+      sendConfiguredWhatsApp("pagamento", { phone: cu.whatsapp, cliente: cu.name, valor: brl(amount), saldo: brl(balance) });
+      return { ...cu, av: { ...cu.av, balance }, payments: [{ id: crypto.randomUUID(), date: new Date().toISOString(), amount, method, balanceAfter: balance }, ...cu.payments] };
     }));
     push("Abatimento de " + brl(amount) + " registrado (" + method + ")");
   }, [push]);
