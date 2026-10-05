@@ -47,6 +47,20 @@ function load<T>(key: string, fallback: T): T {
 const saleItemsText = (sale: Pick<Sale, "items">) =>
   sale.items.map((i) => i.productName + " " + i.color + " " + i.size + " x" + i.quantity).join(", ");
 
+
+function sendConfiguredWhatsApp(event: "compra" | "pagamento" | "parcelamento", data: Record<string,string>) {
+  if (typeof window === "undefined") return;
+  try {
+    const cfg = JSON.parse(window.localStorage.getItem("modah:whatsapp-messages") || "null");
+    if (!cfg?.enabled || !cfg.apiUrl || !data.phone) return;
+    const templates: Record<string,string> = { compra: cfg.compra, pagamento: cfg.pagamento, parcelamento: cfg.parcelamento };
+    const template = templates[event];
+    if (!template) return;
+    const message = String(template).replace(/\{(\w+)\}/g, (_: string, key: string) => data[key] ?? "");
+    void fetch(cfg.apiUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: data.phone, message, event }) }).catch(() => {});
+  } catch {}
+}
+
 function applySaleToCustomer(customer: Customer, sale: Pick<Sale, "customerId" | "paymentMethod" | "total" | "amountPaid" | "dueDate" | "items">, saleId: string, sign: 1 | -1, date: string) {
   const purchaseId = saleId;
   if (sign === -1) {
@@ -276,7 +290,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setCustomers((prev) => prev.map((cu) => {
       if (cu.id !== customerId) return cu;
       const av = cu.av ? { ...cu.av, total: cu.av.total + price, balance: cu.av.balance + price } : { total: price, balance: price, dueDate: new Date(Date.now() + 30 * 864e5).toISOString().slice(0,10) };
-      return { ...cu, av, purchases: [{ id: crypto.randomUUID(), date: new Date().toISOString(), items, price, method: "Ficha (AV)" }, ...cu.purchases] };
+      const next = { ...cu, av, purchases: [{ id: crypto.randomUUID(), date: new Date().toISOString(), items, price, method: "Ficha (AV)" }, ...cu.purchases] };\n      sendConfiguredWhatsApp("compra", { phone: cu.whatsapp, cliente: cu.name, valor: brl(price), saldo: brl(av.balance) });\n      return next;
     }));
     push("Compra na ficha: " + items + " — " + brl(price));
   }, [push]);
@@ -285,15 +299,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (installments < 1) return;
     setCustomers((prev) => prev.map((cu) => {
       if (cu.id !== customerId || !cu.av) return cu;
-      return {
-        ...cu,
-        av: {
-          ...cu.av,
-          plan: { installments, mode: installments === 1 ? "aberto" : "parcelado", startedAt: new Date().toISOString() },
-        },
-      };
+      const nextPlan = { installments, mode: installments === 1 ? "aberto" as const : "parcelado" as const, startedAt: new Date().toISOString() };
+      sendConfiguredWhatsApp("parcelamento", { phone: cu.whatsapp, cliente: cu.name, saldo: brl(cu.av.balance), parcelas: String(installments), parcela: installments > 1 ? brl(cu.av.balance / installments) : "pagamento livre" });
+      return { ...cu, av: { ...cu.av, plan: nextPlan } };
     }));
-    push("Parcelamento da ficha atualizado");
+    setCustomers((prev) => prev);\n    push("Parcelamento da ficha atualizado");
   }, [push]);
 
   const addLedgerPayment = useCallback((customerId: string, amount: number, method: string) => {
@@ -301,7 +311,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setCustomers((prev) => prev.map((cu) => {
       if (cu.id !== customerId || !cu.av) return cu;
       const balance = Math.max(0, cu.av.balance - amount);
-      return { ...cu, av: { ...cu.av, balance }, payments: [{ id: crypto.randomUUID(), date: new Date().toISOString(), amount, method, balanceAfter: balance }, ...cu.payments] };
+      sendConfiguredWhatsApp("pagamento", { phone: cu.whatsapp, cliente: cu.name, valor: brl(amount), saldo: brl(balance) });\n      return { ...cu, av: { ...cu.av, balance }, payments: [{ id: crypto.randomUUID(), date: new Date().toISOString(), amount, method, balanceAfter: balance }, ...cu.payments] };
     }));
     push("Abatimento de " + brl(amount) + " registrado (" + method + ")");
   }, [push]);
