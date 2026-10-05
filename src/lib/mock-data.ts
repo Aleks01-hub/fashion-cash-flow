@@ -35,7 +35,7 @@ export type Purchase = {
   method: string;
 };
 
-export type AvPayment = {
+export type AvPlan = {\n  installments: number;\n  mode: "parcelado" | "aberto";\n  startedAt: string;\n};\n\nexport type AvPayment = {
   id: string;
   date: string;
   amount: number;
