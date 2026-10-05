@@ -39,6 +39,7 @@ export type AvPlan = {
   installments: number;
   mode: "parcelado" | "aberto";
   startedAt: string;
+  remainingInstallments?: number;
 };
 
 export type AvPayment = {
