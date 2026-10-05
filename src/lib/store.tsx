@@ -33,7 +33,7 @@ type Ctx = {
   addCustomer: (c: Omit<Customer, "id" | "payments" | "purchases">) => void;
   restock: (productId: string, color: string, size: string, qty: number, note?: string) => void;
   updateProduct: (id: string, patch: Partial<Product>) => void; addProduct: (p: Omit<Product, "id">) => void; deleteProduct: (id: string) => void;
-  addLedgerPurchase: (customerId: string, items: string, price: number) => void; addLedgerPayment: (customerId: string, amount: number, method: string) => void;
+  addLedgerPurchase: (customerId: string, items: string, price: number) => void; addLedgerPayment: (customerId: string, amount: number, method: string) => void;\n  setAvPlan: (customerId: string, installments: number) => void;
   feed: { id: string; text: string; at: string }[];
 };
 
@@ -281,6 +281,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     push("Compra na ficha: " + items + " — " + brl(price));
   }, [push]);
 
+  const setAvPlan = useCallback((customerId: string, installments: number) => {
+    if (installments < 1) return;
+    setCustomers((prev) => prev.map((cu) => {
+      if (cu.id !== customerId || !cu.av) return cu;
+      return {
+        ...cu,
+        av: {
+          ...cu.av,
+          plan: { installments, mode: installments === 1 ? "aberto" : "parcelado", startedAt: new Date().toISOString() },
+        },
+      };
+    }));
+    push("Parcelamento da ficha atualizado");
+  }, [push]);
+
   const addLedgerPayment = useCallback((customerId: string, amount: number, method: string) => {
     if (amount <= 0) return;
     setCustomers((prev) => prev.map((cu) => {
@@ -291,7 +306,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     push("Abatimento de " + brl(amount) + " registrado (" + method + ")");
   }, [push]);
 
-  const value = useMemo(() => ({ products, customers, reservations, sales, exchanges, stockMovements, store, setStore, online, setOnline, registerSale, createSale, updateSale, cancelSale, registerExchange, registerAv, updateCustomer, addCustomer, restock, updateProduct, addProduct, deleteProduct, addLedgerPurchase, addLedgerPayment, feed }), [products, customers, reservations, sales, exchanges, stockMovements, store, online, registerSale, createSale, updateSale, cancelSale, registerExchange, registerAv, updateCustomer, addCustomer, restock, updateProduct, addProduct, deleteProduct, addLedgerPurchase, addLedgerPayment, feed]);
+  const value = useMemo(() => ({ products, customers, reservations, sales, exchanges, stockMovements, store, setStore, online, setOnline, registerSale, createSale, updateSale, cancelSale, registerExchange, registerAv, updateCustomer, addCustomer, restock, updateProduct, addProduct, deleteProduct, addLedgerPurchase, addLedgerPayment, setAvPlan, feed }), [products, customers, reservations, sales, exchanges, stockMovements, store, online, registerSale, createSale, updateSale, cancelSale, registerExchange, registerAv, updateCustomer, addCustomer, restock, updateProduct, addProduct, deleteProduct, addLedgerPurchase, addLedgerPayment, setAvPlan, feed]);
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
 
