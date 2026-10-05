@@ -36,7 +36,7 @@ export function CustomerLedger({ customer, onBack, onEdit }: { customer: Custome
   const late = customerStatus(customer) === "atraso";
   const value = Number(amount.replace(",", ".")) || 0;
   const plan = customer.av?.plan;
-  const planAmount = plan && plan.installments > 1 ? balance / plan.installments : 0;
+  const planAmount = plan && plan.installments > 1 ? balance / (plan.remainingInstallments ?? plan.installments) : 0;
   const suggestions = [2, 3, 4, 6, 12].filter((n) => balance > 0 && balance / n >= 20);
 
   const exportText = useMemo(() => {
@@ -130,7 +130,7 @@ export function CustomerLedger({ customer, onBack, onEdit }: { customer: Custome
       </div>
 
       <div className="mb-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
-        <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs text-muted-foreground">Divisão da conta</p><p className="font-semibold">{plan?.installments && plan.installments > 1 ? `${plan.installments}x de ${brl(planAmount)}` : "1x — pagamento livre"}</p></div><Button size="sm" variant="outline" onClick={() => setPlanOpen(true)}>Dividir / alterar</Button></div>
+        <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs text-muted-foreground">Divisão da conta</p><p className="font-semibold">{plan?.installments && plan.installments > 1 ? `${plan.remainingInstallments ?? plan.installments}x de ${brl(planAmount)}` : "1x — pagamento livre"}</p></div><Button size="sm" variant="outline" onClick={() => setPlanOpen(true)}>Dividir / alterar</Button></div>
         <p className="mt-1 text-xs text-muted-foreground">Novas compras entram no mesmo saldo e recalculam o valor sugerido das parcelas.</p>
       </div>
 
