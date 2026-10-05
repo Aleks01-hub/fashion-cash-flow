@@ -35,7 +35,13 @@ export type Purchase = {
   method: string;
 };
 
-export type AvPlan = {\n  installments: number;\n  mode: "parcelado" | "aberto";\n  startedAt: string;\n};\n\nexport type AvPayment = {
+export type AvPlan = {
+  installments: number;
+  mode: "parcelado" | "aberto";
+  startedAt: string;
+};
+
+export type AvPayment = {
   id: string;
   date: string;
   amount: number;
@@ -57,6 +63,7 @@ export type Customer = {
     total: number;
     balance: number;
     dueDate: string;
+    plan?: AvPlan;
   } | null;
   payments: AvPayment[];
   purchases: Purchase[];
