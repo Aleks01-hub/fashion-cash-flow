@@ -13,6 +13,9 @@ type SettingsData = {
   overdueReminders: boolean; eventNotifications: boolean; theme: "light" | "dark" | "system"; compactTables: boolean;
 };
 
+type WhatsAppMessages = { enabled: boolean; apiUrl: string; phoneNumberId: string; ficha: string; pagamento: string; parcelamento: string; cobranca: string; compra: string };
+const defaultWhatsApp: WhatsAppMessages = { enabled: false, apiUrl: "/api/whatsapp/send", phoneNumberId: "", ficha: "Olá {cliente}! Sua ficha está com saldo de {saldo}.", pagamento: "Olá {cliente}! Recebemos {valor}. Seu saldo agora é {saldo}.", parcelamento: "Olá {cliente}! Sua ficha de {saldo} foi organizada em {parcelas}x de {parcela}.", cobranca: "Olá {cliente}! Sua ficha está com saldo de {saldo}. Vencimento: {vencimento}.", compra: "Olá {cliente}! Sua compra de {valor} foi lançada na ficha. Saldo atual: {saldo}." };
+
 const defaultProfile: Profile = { name: "Alex", email: "", phone: "", role: "Administrador", photo: "" };
 const defaultSettings: SettingsData = {
   businessName: "Caixa Central", defaultDueDays: 30, lowStockWarning: true, birthdayReminders: true,
@@ -31,7 +34,8 @@ export function ProfileSettingsSection() {
   const [users,setUsers]=useState<UserItem[]>(()=>load("modah:users",[{id:"u1",name:"Administrador",role:"Administrador",active:true},{id:"u2",name:"Vendedor",role:"Vendedor",active:true}]));
   const [newUser,setNewUser]=useState("");
   const [newRole,setNewRole]=useState<UserItem["role"]>("Vendedor");
-  const [saved,setSaved]=useState(false);\n  const [whatsapp,setWhatsapp]=useState<WhatsAppMessages>(()=>load("modah:whatsapp-messages",defaultWhatsApp));
+  const [saved,setSaved]=useState(false);
+  const [whatsapp,setWhatsapp]=useState<WhatsAppMessages>(()=>load("modah:whatsapp-messages",defaultWhatsApp));
   useEffect(()=>{ localStorage.setItem("modah:users",JSON.stringify(users)); },[users]);
 
   useEffect(()=>{
@@ -42,7 +46,8 @@ export function ProfileSettingsSection() {
 
   const save=()=>{
     localStorage.setItem("modah:profile",JSON.stringify(profile));
-    localStorage.setItem("modah:settings",JSON.stringify(settings));\n    localStorage.setItem("modah:whatsapp-messages",JSON.stringify(whatsapp));
+    localStorage.setItem("modah:settings",JSON.stringify(settings));
+    localStorage.setItem("modah:whatsapp-messages",JSON.stringify(whatsapp));
     localStorage.setItem("modah:users",JSON.stringify(users));
     localStorage.setItem("modah:business-name",settings.businessName);
     window.dispatchEvent(new Event("modah:profile-updated"));
