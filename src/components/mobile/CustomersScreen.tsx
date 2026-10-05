@@ -179,7 +179,7 @@ export function CustomerDetail({ customer, onBack }: { customer: Customer; onBac
 
   const balance = customer.av?.balance ?? 0;
   const plan = customer.av?.plan;
-  const planAmount = plan && plan.installments > 1 ? balance / plan.installments : 0;
+  const planAmount = plan && plan.installments > 1 ? balance / (plan.remainingInstallments ?? plan.installments) : 0;
   const suggestions = [2, 3, 4, 6, 12].filter((n) => balance > 0 && balance / n >= 20);
 
   const exportText = useMemo(() => {
@@ -201,7 +201,8 @@ export function CustomerDetail({ customer, onBack }: { customer: Customer; onBac
       "PAGAMENTOS / ABATIMENTOS",
       ...customer.payments.map((p) => `- ${brl(p.amount)} | ${p.method} | ${dateTime(p.date)} | Saldo após: ${brl(p.balanceAfter)}`),
     ].filter(Boolean);
-    return lines.join("\n");
+    return lines.join("
+");
   }, [customer, st, balance, plan, planAmount]);
 
   const whatsappShare = `https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(exportText)}`;
@@ -324,7 +325,7 @@ export function CustomerDetail({ customer, onBack }: { customer: Customer; onBac
           </div>
         </div>
         <div className="mb-3 rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm">
-          <div className="flex items-center justify-between gap-2"><b>{plan?.installments && plan.installments > 1 ? `${plan.installments}x de ${brl(planAmount)}` : "1x — pagamento livre"}</b><Button size="sm" variant="outline" onClick={() => setPlanOpen(true)}>Dividir / alterar</Button></div>
+          <div className="flex items-center justify-between gap-2"><b>{plan?.installments && plan.installments > 1 ? `${plan.remainingInstallments ?? plan.installments}x de ${brl(planAmount)}` : "1x — pagamento livre"}</b><Button size="sm" variant="outline" onClick={() => setPlanOpen(true)}>Dividir / alterar</Button></div>
           <p className="mt-1 text-xs text-muted-foreground">Novas compras entram na mesma conta e recalculam a sugestão.</p>
         </div>
         <Dialog open={planOpen} onOpenChange={setPlanOpen}>
