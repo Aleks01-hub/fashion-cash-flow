@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ArrowLeft, Minus, MessageCircle, CalendarDays, Pencil, Download, Send } from "lucide-react";
-import { Button } from "@/components/ui/button";\nimport { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -12,7 +13,9 @@ import type { Customer } from "@/lib/mock-data";
 type Entry = { id: string; date: string; kind: "compra" | "abate"; amount: number; label: string };
 
 export function CustomerLedger({ customer, onBack, onEdit }: { customer: Customer; onBack: () => void; onEdit: () => void }) {
-  const { addLedgerPayment, updateCustomer, setAvPlan } = useStore();\n  const [planOpen, setPlanOpen] = useState(false);\n  const [planInstallments, setPlanInstallments] = useState(customer.av?.plan?.installments ?? 1);
+  const { addLedgerPayment, updateCustomer, setAvPlan } = useStore();
+  const [planOpen, setPlanOpen] = useState(false);
+  const [planInstallments, setPlanInstallments] = useState(customer.av?.plan?.installments ?? 1);
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("Pix");
 
@@ -31,7 +34,10 @@ export function CustomerLedger({ customer, onBack, onEdit }: { customer: Custome
   const balance = customer.av?.balance ?? 0;
   const quitada = balance <= 0;
   const late = customerStatus(customer) === "atraso";
-  const value = Number(amount.replace(",", ".")) || 0;\n  const plan = customer.av?.plan;\n  const planAmount = plan && plan.installments > 1 ? balance / plan.installments : 0;\n  const suggestions = [2, 3, 4, 6, 12].filter((n) => balance > 0 && balance / n >= 20);
+  const value = Number(amount.replace(",", ".")) || 0;
+  const plan = customer.av?.plan;
+  const planAmount = plan && plan.installments > 1 ? balance / plan.installments : 0;
+  const suggestions = [2, 3, 4, 6, 12].filter((n) => balance > 0 && balance / n >= 20);
 
   const exportText = useMemo(() => {
     const situacao = quitada ? "Quitada" : late ? "Em atraso" : "Em dia";
@@ -50,7 +56,8 @@ export function CustomerLedger({ customer, onBack, onEdit }: { customer: Custome
       "",
       `TOTAL DEVEDOR: ${brl(balance)}`,
     ].filter((l) => l !== "");
-    return lines.join("\n");
+    return lines.join("
+");
   }, [customer, rows, balance, quitada, late]);
 
   const whatsappShare = `https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(exportText)}`;
@@ -122,7 +129,12 @@ export function CustomerLedger({ customer, onBack, onEdit }: { customer: Custome
         )}
       </div>
 
-      <div className="mb-3 rounded-xl border border-primary/20 bg-primary/5 p-3">\n        <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs text-muted-foreground">Divisão da conta</p><p className="font-semibold">{plan?.installments && plan.installments > 1 ? `${plan.installments}x de ${brl(planAmount)}` : "1x — pagamento livre"}</p></div><Button size="sm" variant="outline" onClick={() => setPlanOpen(true)}>Dividir / alterar</Button></div>\n        <p className="mt-1 text-xs text-muted-foreground">Novas compras entram no mesmo saldo e recalculam o valor sugerido das parcelas.</p>\n      </div>\n\n      <div className="flex items-center justify-between border-t border-border pt-3">
+      <div className="mb-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="text-xs text-muted-foreground">Divisão da conta</p><p className="font-semibold">{plan?.installments && plan.installments > 1 ? `${plan.installments}x de ${brl(planAmount)}` : "1x — pagamento livre"}</p></div><Button size="sm" variant="outline" onClick={() => setPlanOpen(true)}>Dividir / alterar</Button></div>
+        <p className="mt-1 text-xs text-muted-foreground">Novas compras entram no mesmo saldo e recalculam o valor sugerido das parcelas.</p>
+      </div>
+
+      <div className="flex items-center justify-between border-t border-border pt-3">
         <span className="font-bold uppercase">Total devedor</span>
         <span className="text-xl font-bold">{brl(balance)}</span>
       </div>
