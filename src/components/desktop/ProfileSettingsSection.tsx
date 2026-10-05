@@ -117,6 +117,15 @@ export function ProfileSettingsSection() {
     </section>
 
     <section className="card-elevated rounded-2xl p-5">
+      <div className="mb-5 flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary"><MessageCircle className="h-5 w-5"/></div><div><h2 className="font-bold">WhatsApp e mensagens automáticas</h2><p className="text-sm text-muted-foreground">Configure os textos e o endereço usado pela integração com a API do WhatsApp.</p></div></div>
+      <div className="space-y-4">
+        <label className="flex items-center justify-between rounded-xl border p-3 text-sm"><span><b>Ativar integração</b><br/><span className="text-xs text-muted-foreground">O segredo da API fica no servidor.</span></span><input type="checkbox" checked={whatsapp.enabled} onChange={e=>setWhatsapp({...whatsapp,enabled:e.target.checked})}/></label>
+        <div className="grid gap-3 md:grid-cols-2"><div><Label>Endpoint de envio</Label><Input value={whatsapp.apiUrl} onChange={e=>setWhatsapp({...whatsapp,apiUrl:e.target.value})}/></div><div><Label>Phone Number ID</Label><Input value={whatsapp.phoneNumberId} onChange={e=>setWhatsapp({...whatsapp,phoneNumberId:e.target.value})}/></div></div>
+        <div className="grid gap-3 md:grid-cols-2">{[["ficha","Nova ficha"],["compra","Compra adicionada"],["pagamento","Pagamento/abatimento"],["parcelamento","Parcelamento"],["cobranca","Cobrança"]].map(([key,label])=><div key={key}><Label>{label}</Label><textarea className="mt-1 min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm" value={whatsapp[key as keyof WhatsAppMessages] as string} onChange={e=>setWhatsapp({...whatsapp,[key]:e.target.value})}/></div>)}</div>
+        <p className="rounded-xl bg-muted p-3 text-xs text-muted-foreground">Variáveis: <b>{"{cliente}"}</b>, <b>{"{valor}"}</b>, <b>{"{saldo}"}</b>, <b>{"{parcelas}"}</b>, <b>{"{parcela}"}</b>, <b>{"{vencimento}"}</b>.</p>
+      </div>
+    </section>
+    <section className="card-elevated rounded-2xl p-5">
       <div className="mb-4 flex items-center gap-3"><Bell className="h-5 w-5 text-primary"/><div><h2 className="font-bold">Preferências rápidas</h2><p className="text-sm text-muted-foreground">Ferramentas para manutenção da operação local.</p></div></div>
       <div className="grid gap-3 sm:grid-cols-2">
         <Button variant="outline" onClick={exportData}><Download className="h-4 w-4"/> Exportar backup local</Button>
