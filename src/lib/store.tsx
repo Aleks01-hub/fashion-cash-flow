@@ -314,8 +314,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setCustomers((prev) => prev.map((cu) => {
       if (cu.id !== customerId || !cu.av) return cu;
       const balance = Math.max(0, cu.av.balance - amount);
+      const currentPlan = cu.av.plan;
+      const nextPlan = currentPlan && currentPlan.installments > 1
+        ? { ...currentPlan, remainingInstallments: balance > 0 ? Math.max(1, currentPlan.remainingInstallments ?? currentPlan.installments) : 0 }
+        : currentPlan;
       sendConfiguredWhatsApp("pagamento", { phone: cu.whatsapp, cliente: cu.name, valor: brl(amount), saldo: brl(balance) });
-      return { ...cu, av: { ...cu.av, balance }, payments: [{ id: crypto.randomUUID(), date: new Date().toISOString(), amount, method, balanceAfter: balance }, ...cu.payments] };
+      return { ...cu, av: { ...cu.av, balance, plan: nextPlan }, payments: [{ id: crypto.randomUUID(), date: new Date().toISOString(), amount, method, balanceAfter: balance }, ...cu.payments] };
     }));
     push("Abatimento de " + brl(amount) + " registrado (" + method + ")");
   }, [push]);
