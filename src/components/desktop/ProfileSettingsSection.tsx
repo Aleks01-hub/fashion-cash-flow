@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Bell, Download, LockKeyhole, Moon, Save, Settings, Sun, Trash2, UserCircle, Users, UserPlus } from "lucide-react";
+import { Bell, Download, LockKeyhole, MessageCircle, Moon, Save, Settings, Sun, Trash2, UserCircle, Users, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +31,7 @@ export function ProfileSettingsSection() {
   const [users,setUsers]=useState<UserItem[]>(()=>load("modah:users",[{id:"u1",name:"Administrador",role:"Administrador",active:true},{id:"u2",name:"Vendedor",role:"Vendedor",active:true}]));
   const [newUser,setNewUser]=useState("");
   const [newRole,setNewRole]=useState<UserItem["role"]>("Vendedor");
-  const [saved,setSaved]=useState(false);
+  const [saved,setSaved]=useState(false);\n  const [whatsapp,setWhatsapp]=useState<WhatsAppMessages>(()=>load("modah:whatsapp-messages",defaultWhatsApp));
   useEffect(()=>{ localStorage.setItem("modah:users",JSON.stringify(users)); },[users]);
 
   useEffect(()=>{
@@ -42,7 +42,7 @@ export function ProfileSettingsSection() {
 
   const save=()=>{
     localStorage.setItem("modah:profile",JSON.stringify(profile));
-    localStorage.setItem("modah:settings",JSON.stringify(settings));
+    localStorage.setItem("modah:settings",JSON.stringify(settings));\n    localStorage.setItem("modah:whatsapp-messages",JSON.stringify(whatsapp));
     localStorage.setItem("modah:users",JSON.stringify(users));
     localStorage.setItem("modah:business-name",settings.businessName);
     window.dispatchEvent(new Event("modah:profile-updated"));
