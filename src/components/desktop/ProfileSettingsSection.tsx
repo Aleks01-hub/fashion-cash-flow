@@ -44,8 +44,33 @@ export function ProfileSettingsSection(){
     window.dispatchEvent(new Event("modah:profile-updated"));setNewPassword("");setSaved(true);setTimeout(()=>setSaved(false),1800);
   };
 
-  const exportData=()=>{const data=Object.fromEntries(Object.keys(localStorage).filter(k=>k.startsWith("modah:")).map(k=>[k,localStorage.getItem(k)]));const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="backup-caixa-central.json";a.click();URL.revokeObjectURL(url)};
-  const clearData=()=>{if(!window.confirm("Isso apagará os dados locais do sistema e restaurará o ambiente inicial. Continuar?"))return;Object.keys(localStorage).filter(k=>k.startsWith("modah:")).forEach(k=>localStorage.removeItem(k));window.location.reload()};
+  const exportData=()=>{
+    const protectedKeys=new Set(["modah:auth-users","modah:auth-session","modah:auth-recovery-code"]);
+    const data=Object.fromEntries(Object.keys(localStorage).filter(k=>k.startsWith("modah:")&&!protectedKeys.has(k)).map(k=>[k,localStorage.getItem(k)]));
+    const blob=new Blob([JSON.stringify({version:1,exportedAt:new Date().toISOString(),data},null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="backup-caixa-central.json";a.click();URL.revokeObjectURL(url);
+  };
+  const importData=()=>{
+    const input=document.createElement("input");input.type="file";input.accept=".json,application/json";
+    input.onchange=async()=>{
+      const file=input.files?.[0];if(!file)return;
+      try{
+        const parsed=JSON.parse(await file.text());
+        const data=parsed?.data&&typeof parsed.data==="object"?parsed.data:parsed;
+        const allowed=Object.entries(data).filter(([key,value])=>key.startsWith("modah:")&&!["modah:auth-users","modah:auth-session","modah:auth-recovery-code"].includes(key)&&typeof value==="string");
+        if(!allowed.length)throw new Error("Backup inválido");
+        if(!window.confirm("Importar este backup substituirá os dados atuais da loja. Usuários e senhas não serão alterados. Continuar?"))return;
+        allowed.forEach(([key,value])=>localStorage.setItem(key,String(value)));
+        window.location.reload();
+      }catch{window.alert("Não foi possível importar o backup. Use um arquivo JSON exportado pelo Caixa Central.");}
+    };
+    input.click();
+  };
+  const prepareNewStore=()=>{
+    if(!window.confirm("Isso vai apagar produtos, clientes, vendas, trocas, movimentações e eventos locais. Usuários, configurações e perfil serão mantidos. Continuar?"))return;
+    ["modah:products","modah:customers","modah:sales","modah:exchanges","modah:stock-movements","modah:events"].forEach(k=>localStorage.removeItem(k));
+    window.location.reload();
+  };
   const setPhoto=(file?:File)=>{if(!file)return;const reader=new FileReader();reader.onload=()=>setProfile(p=>({...p,photo:String(reader.result)}));reader.readAsDataURL(file)};
 
   const startEdit=(u:AppUser)=>{setEditingId(u.id);setUserForm({name:u.name,login:u.login,password:"",role:u.role,accessMode:u.accessMode,permissions:u.permissions,active:u.active})};
@@ -125,8 +150,8 @@ export function ProfileSettingsSection(){
 
     <section className="card-elevated rounded-2xl p-5">
       <div className="mb-4 flex items-center gap-3"><Bell className="h-5 w-5 text-primary"/><div><h2 className="font-bold">Preferências rápidas</h2><p className="text-sm text-muted-foreground">Ferramentas para manutenção da operação local.</p></div></div>
-      <div className="grid gap-3 sm:grid-cols-2"><Button variant="outline" onClick={exportData}><Download className="h-4 w-4"/>Exportar backup local</Button><Button variant="outline" onClick={()=>{setSettings({...settings,theme:"light"});localStorage.setItem("modah:settings",JSON.stringify({...settings,theme:"light"}))}}><Sun className="h-4 w-4"/>Forçar modo claro</Button><Button variant="outline" onClick={()=>{setSettings({...settings,theme:"dark"});localStorage.setItem("modah:settings",JSON.stringify({...settings,theme:"dark"}))}}><Moon className="h-4 w-4"/>Forçar modo escuro</Button><Button variant="destructive" onClick={clearData}><Trash2 className="h-4 w-4"/>Restaurar dados iniciais</Button></div>
-      <p className="mt-3 flex items-center gap-1 text-xs text-muted-foreground"><LockKeyhole className="h-3 w-3"/>Os dados de autenticação deste MVP ficam no armazenamento local do navegador.</p>
+      <div className="grid gap-3 sm:grid-cols-2"><Button variant="outline" onClick={exportData}><Download className="h-4 w-4"/>Exportar backup da loja</Button><Button variant="outline" onClick={importData}>Importar backup</Button><Button variant="outline" onClick={()=>{setSettings({...settings,theme:"light"});localStorage.setItem("modah:settings",JSON.stringify({...settings,theme:"light"}))}}><Sun className="h-4 w-4"/>Forçar modo claro</Button><Button variant="outline" onClick={()=>{setSettings({...settings,theme:"dark"});localStorage.setItem("modah:settings",JSON.stringify({...settings,theme:"dark"}))}}><Moon className="h-4 w-4"/>Forçar modo escuro</Button><Button variant="destructive" onClick={prepareNewStore}><Trash2 className="h-4 w-4"/>Preparar loja nova</Button></div>
+      <p className="mt-3 flex items-center gap-1 text-xs text-muted-foreground"><LockKeyhole className="h-3 w-3"/>Backup não inclui usuários, senhas ou sessão. Nesta versão os dados ficam no navegador; faça backup regularmente.</p>
     </section>
   </div>;
 }
