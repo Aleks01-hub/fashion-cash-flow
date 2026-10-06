@@ -51,7 +51,7 @@ export function DesktopPanel() {
 
   useEffect(() => {
     const t = setTimeout(() => toast("Monitor em tempo real", { description: "Sistema pronto para registrar vendas e movimentações." }), 2500);
-    const onProfile = () => { try { setProfileName(JSON.parse(window.localStorage.getItem("modah:profile") || "null")?.name || "Alex"); setBusinessName(window.localStorage.getItem("modah:business-name") || "Caixa Central"); } catch {} };
+    const onProfile = () => { try { setProfileName(JSON.parse(window.localStorage.getItem("modah:profile") || "null")?.name || "Alex"); setBusinessName(window.localStorage.getItem("modah:business-name") || "Caixa Central"); } catch { /* ignore */ } };
     window.addEventListener("modah:profile-updated", onProfile);
     return () => { clearTimeout(t); window.removeEventListener("modah:profile-updated", onProfile); };
   }, []);
