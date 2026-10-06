@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   Banknote, CheckCircle2, CreditCard, Minus, Plus, QrCode, ReceiptText,
-  Search, ShoppingCart, Trash2, UserPlus, WalletCards, X,
+  Search, ShoppingCart, Trash2, UserPlus, WalletCards, X, Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +67,7 @@ export function QuickSaleScreen() {
   const [newCustomer, setNewCustomer] = useState({ name: "", whatsapp: "" });
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
 
   const selectedCustomer = customers.find((c) => c.id === selectedCustomerId) ?? null;
   const activeProducts = useMemo(() => products.filter((p) => !p.details?.inactive), [products]);
@@ -519,7 +520,7 @@ export function QuickSaleScreen() {
         <div className="mb-3 flex items-center gap-2"><ReceiptText className="h-4 w-4 text-primary" /><h2 className="font-bold">Últimas vendas</h2></div>
         <div className="space-y-2">
           {sales.slice(0, 5).map((sale) => (
-            <div key={sale.id} className="rounded-xl bg-muted p-3">
+            <button type="button" key={sale.id} onClick={() => setSelectedSaleId(sale.id)} className="w-full rounded-xl bg-muted p-3 text-left transition hover:bg-accent">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">Venda #{sale.number}</p>
@@ -527,12 +528,24 @@ export function QuickSaleScreen() {
                 </div>
                 <p className="font-bold">{brl(sale.total)}</p>
               </div>
-              <p className="mt-1 text-[11px] text-muted-foreground">{dateTime(sale.date)}</p>
-            </div>
+              <div className="mt-1 flex items-center justify-between gap-2"><p className="text-[11px] text-muted-foreground">{dateTime(sale.date)}</p><span className="flex items-center gap-1 text-[11px] font-semibold text-primary"><Eye className="h-3 w-3"/>Ver detalhes</span></div>
+            </button>
           ))}
           {sales.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma venda registrada.</p>}
         </div>
       </section>
+
+      <Dialog open={!!selectedSaleId} onOpenChange={v=>!v&&setSelectedSaleId(null)}>
+        <DialogContent className="max-h-[88vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Detalhes da venda</DialogTitle></DialogHeader>
+          {selectedSaleId&&(()=>{const sale=sales.find(s=>s.id===selectedSaleId);if(!sale)return null;return <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-3"><div><span className="text-muted-foreground">Venda</span><p className="font-bold">#{sale.number}</p></div><div><span className="text-muted-foreground">Data</span><p>{dateTime(sale.date)}</p></div><div><span className="text-muted-foreground">Cliente</span><p>{sale.customerName}</p></div><div><span className="text-muted-foreground">Pagamento</span><p>{sale.paymentMethod}</p></div></div>
+            <div className="rounded-xl bg-muted p-3 space-y-2">{sale.items.map(item=><div key={item.id} className="flex justify-between gap-3 border-b py-2 last:border-0"><div><p className="font-medium">{item.productName}</p><p className="text-xs text-muted-foreground">{item.color} · {item.size} · {item.quantity}x {brl(item.unitPrice)}</p></div><b>{brl(item.total)}</b></div>)}</div>
+            <div className="space-y-2 border-t pt-3"><div className="flex justify-between"><span>Subtotal</span><b>{brl(sale.subtotal)}</b></div><div className="flex justify-between"><span>Desconto</span><b>{brl(sale.discount)}</b></div><div className="flex justify-between text-lg"><span>Total</span><b className="text-primary">{brl(sale.total)}</b></div><div className="flex justify-between"><span>Recebido</span><b>{brl(sale.amountPaid)}</b></div>{sale.change>0&&<div className="flex justify-between"><span>Troco</span><b>{brl(sale.change)}</b></div>}</div>
+            {sale.notes&&<div className="rounded-xl border p-3"><p className="text-xs text-muted-foreground">Observações</p><p className="mt-1">{sale.notes}</p></div>}
+          </div>})()}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={newCustomerOpen} onOpenChange={setNewCustomerOpen}>
         <DialogContent>
