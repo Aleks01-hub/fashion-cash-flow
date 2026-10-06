@@ -4,6 +4,7 @@ import { QuickSaleScreen } from "./QuickSaleScreen";
 import { CustomersScreen } from "./CustomersScreen";
 import { StockScreen } from "./StockScreen";
 import { ReservationsScreen } from "./ReservationsScreen";
+import { useAuth } from "@/lib/auth";
 
 const TABS = [
   { id: "vender", label: "Vender", icon: ShoppingCart },
@@ -13,6 +14,8 @@ const TABS = [
 ] as const;
 
 export function MobileApp() {
+  const { can, user } = useAuth();
+  const allowedTabs = TABS.filter((t) => t.id === "vender" || can(t.id));
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("vender");
 
   return (
@@ -24,7 +27,7 @@ export function MobileApp() {
 
       <nav className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-lg border-t border-border bg-card/95 backdrop-blur">
         <ul className="grid grid-cols-4">
-          {TABS.map((t) => {
+          {allowedTabs.map((t) => {
             const active = tab === t.id;
             return (
               <li key={t.id}>
