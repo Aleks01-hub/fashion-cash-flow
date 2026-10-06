@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/StatusBadge";
 import { customerStatus, useStore } from "@/lib/store";
+import { useAuth } from "@/lib/auth";
 import { brl, dateOnly, dateTime } from "@/lib/format";
 import { CustomerLedger } from "./CustomerLedger";
 import { ProductsSection } from "./ProductsSection";
@@ -26,7 +27,9 @@ const NAV = [
 
 export function DesktopPanel() {
   const { customers, products, sales, feed, updateProduct, store } = useStore();
-  const [section, setSection] = useState<(typeof NAV)[number]["id"]>("dashboard");
+  const { can, user, logout } = useAuth();
+  const allowedNav = NAV.filter((n) => can(n.id));
+  const [section, setSection] = useState<(typeof NAV)[number]["id"]>(() => allowedNav[0]?.id || "dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
   const [tab, setTab] = useState<"todos" | "atraso">("todos");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -62,7 +65,7 @@ export function DesktopPanel() {
     return { arrecadado, vendas, pecas, pendente };
   }, [sales, overdue]);
 
-  const go = (id: (typeof NAV)[number]["id"]) => { setSection(id); setSelectedId(null); setMenuOpen(false); };
+  const go = (id: (typeof NAV)[number]["id"]) => { if (!can(id)) return; setSection(id); setSelectedId(null); setMenuOpen(false); };
   const openCustomer = (id: string) => { setSection("fichas"); setSelectedId(id); };
   const list = (tab === "atraso" ? overdue : customers).filter(c => !customerSearch || [c.name,c.whatsapp,c.cpf,c.address].join(" ").toLowerCase().includes(customerSearch.toLowerCase()));
 
@@ -70,11 +73,11 @@ export function DesktopPanel() {
     {menuOpen && <div className="fixed inset-0 z-40 bg-foreground/30" onClick={() => setMenuOpen(false)} />}
     <aside className={`fixed left-0 top-0 z-50 h-full w-64 border-r border-border bg-sidebar p-4 transition-transform duration-200 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
       <div className="mb-4 flex items-center gap-2"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-primary text-primary-foreground"><Radio className="h-4 w-4" /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{businessName}</p><p className="truncate text-xs text-muted-foreground">{store}</p></div><button onClick={() => setMenuOpen(false)} className="rounded-lg p-1 hover:bg-accent"><X className="h-4 w-4" /></button></div>
-      <button onClick={() => go("configuracoes")} className="mb-4 flex w-full items-center gap-3 rounded-xl border bg-card p-3 text-left hover:bg-accent"><div className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary"><UserCircle className="h-5 w-5"/></div><div className="min-w-0"><p className="truncate text-sm font-semibold">{profileName}</p><p className="text-xs text-muted-foreground">Perfil e configurações</p></div></button><nav className="space-y-1">{NAV.map((n) => <button key={n.id} onClick={() => go(n.id)} className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium ${section === n.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}><n.icon className="h-4 w-4 shrink-0" /><span>{n.label}</span></button>)}</nav>
+      <button onClick={() => go("configuracoes")} className="mb-4 flex w-full items-center gap-3 rounded-xl border bg-card p-3 text-left hover:bg-accent"><div className="grid h-9 w-9 place-items-center rounded-full bg-primary/10 text-primary"><UserCircle className="h-5 w-5"/></div><div className="min-w-0"><p className="truncate text-sm font-semibold">{profileName}</p><p className="text-xs text-muted-foreground">Perfil e configurações</p></div></button><nav className="space-y-1">{allowedNav.map((n) => <button key={n.id} onClick={() => go(n.id)} className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium ${section === n.id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent"}`}><n.icon className="h-4 w-4 shrink-0" /><span>{n.label}</span></button>)}</nav>
     </aside>
 
     <main className="min-w-0 space-y-6 p-4 md:p-8">
-      <div className="flex items-center gap-3"><Button variant="outline" size="icon" onClick={() => setMenuOpen(true)}><Menu className="h-5 w-5" /></Button><h1 className="text-lg font-bold">{NAV.find((n) => n.id === section)?.label}</h1></div>
+      <div className="flex items-center gap-3"><Button variant="outline" size="icon" onClick={() => setMenuOpen(true)}><Menu className="h-5 w-5" /></Button><h1 className="text-lg font-bold">{NAV.find((n) => n.id === section)?.label}</h1><span className="ml-auto text-xs text-muted-foreground">{user?.name}</span><Button variant="outline" size="sm" onClick={logout}>Sair</Button></div>
 
       {section === "vendas" && <SalesPage />}
       {section === "produtos" && <ProductsSection />}
