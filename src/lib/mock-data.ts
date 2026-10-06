@@ -64,7 +64,7 @@ export type Customer = {
     total: number;
     balance: number;
     dueDate: string;
-    plan?: AvPlan;
+    plan?: AvPlan | undefined;
   } | null;
   payments: AvPayment[];
   purchases: Purchase[];

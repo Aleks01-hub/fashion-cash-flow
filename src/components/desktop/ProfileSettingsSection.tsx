@@ -16,8 +16,8 @@ const defaultSettings:SettingsData={businessName:"Caixa Central",defaultDueDays:
 
 function load<T>(key:string,fallback:T):T{if(typeof window==="undefined")return fallback;try{return JSON.parse(localStorage.getItem(key)||"null")??fallback}catch{return fallback}}
 
-const desktopPermissions:Array<{id:Permission;label:string}>=[["dashboard","Dashboard"],["clientes","Clientes"],["vendas","Vendas"],["produtos","Produtos"],["gestao","Gestão"],["configuracoes","Configurações"]].map(([id,label])=>({id,label}));
-const mobilePermissions:Array<{id:Permission;label:string}>=[["clientes","Clientes"],["estoque","Estoque"],["reservas","Reservas"]].map(([id,label])=>({id,label}));
+const desktopPermissions:Array<{id:Permission;label:string}>=[["dashboard","Dashboard"],["clientes","Clientes"],["vendas","Vendas"],["produtos","Produtos"],["gestao","Gestão"],["configuracoes","Configurações"]].map(([id,label])=>({id:id as Permission,label:label as string}));
+const mobilePermissions:Array<{id:Permission;label:string}>=[["clientes","Clientes"],["estoque","Estoque"],["reservas","Reservas"]].map(([id,label])=>({id:id as Permission,label:label as string}));
 
 export function ProfileSettingsSection(){
   const {store,setStore}=useStore();
