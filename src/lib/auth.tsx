@@ -69,7 +69,8 @@ export function AuthProvider({children}:{children:ReactNode}){
     users,user,isAdmin,
     login:async(loginValue,password)=>{
       const hash=await hashPassword(password);
-      const found=users.find((u)=>u.login.toLowerCase()===loginValue.trim().toLowerCase()&&u.passwordHash===hash);
+      const found=users.find((u)=>u.login.toLowerCase()===loginValue.trim().toLowerCase()&&(u.passwordHash===hash||u.passwordHash===password));
+      if(found&&found.passwordHash===password){const migratedHash=await hashPassword(password);persist(users.map((u)=>u.id===found.id?{...u,passwordHash:migratedHash}:u));}
       if(!found)return {ok:false,message:"Login ou senha inválidos."};
       if(!found.active)return {ok:false,message:"Este usuário está desativado."};
       localStorage.setItem(SESSION_KEY,found.id);setSessionId(found.id);return {ok:true};
