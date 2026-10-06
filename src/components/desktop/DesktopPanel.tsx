@@ -1,3 +1,4 @@
+import type { Permission } from "@/lib/auth";
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, BarChart3, Boxes, LayoutDashboard, MessageCircle, Radio, Users, Menu, ShoppingBag, X, Package, Wallet as WalletIcon, Settings, UserCircle } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -28,7 +29,8 @@ const NAV = [
 export function DesktopPanel() {
   const { customers, products, sales, feed, updateProduct, store } = useStore();
   const { can, user, logout } = useAuth();
-  const allowedNav = NAV.filter((n) => can(n.id));
+  const permOf = (id: string): Permission => (id === "fichas" ? "clientes" : id === "fechamento" ? "gestao" : id) as Permission;
+  const allowedNav = NAV.filter((n) => can(permOf(n.id)));
   const [section, setSection] = useState<(typeof NAV)[number]["id"]>(() => allowedNav[0]?.id || "dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
   const [tab, setTab] = useState<"todos" | "atraso">("todos");
@@ -65,7 +67,7 @@ export function DesktopPanel() {
     return { arrecadado, vendas, pecas, pendente };
   }, [sales, overdue]);
 
-  const go = (id: (typeof NAV)[number]["id"]) => { if (!can(id)) return; setSection(id); setSelectedId(null); setMenuOpen(false); };
+  const go = (id: (typeof NAV)[number]["id"]) => { if (!can(permOf(id))) return; setSection(id); setSelectedId(null); setMenuOpen(false); };
   const openCustomer = (id: string) => { setSection("fichas"); setSelectedId(id); };
   const list = (tab === "atraso" ? overdue : customers).filter(c => !customerSearch || [c.name,c.whatsapp,c.cpf,c.address].join(" ").toLowerCase().includes(customerSearch.toLowerCase()));
 

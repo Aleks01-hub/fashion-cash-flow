@@ -87,7 +87,7 @@ export function printCustomerPdf(customer: Customer) {
     ${customer.av ? `<div class="summary-row"><span>Vencimento</span><strong>${dateOnly(customer.av.dueDate)}</strong></div>` : ""}
   </div>
 
-  ${notes}
+  ${customer.notes ? `<div class="notes"><strong>Observações:</strong> ${esc(customer.notes)}</div>` : ""}
   <div class="footer">Documento gerado pelo sistema ${esc(businessName)}.</div>
 </body>
 </html>`;

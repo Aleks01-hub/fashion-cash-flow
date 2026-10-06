@@ -1,3 +1,4 @@
+import type { Permission } from "@/lib/auth";
 import { useState } from "react";
 import { ShoppingCart, Users, Shirt, ShoppingBasket } from "lucide-react";
 import { QuickSaleScreen } from "./QuickSaleScreen";
@@ -15,7 +16,7 @@ const TABS = [
 
 export function MobileApp() {
   const { can, user } = useAuth();
-  const allowedTabs = TABS.filter((t) => t.id === "vender" || can(t.id));
+  const allowedTabs = TABS.filter((t) => t.id === "vender" || can((t.id === "fichas" ? "clientes" : t.id) as Permission));
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("vender");
 
   return (

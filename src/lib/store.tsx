@@ -53,12 +53,12 @@ function sendConfiguredWhatsApp(event: "compra" | "pagamento" | "parcelamento", 
   if (typeof window === "undefined") return;
   try {
     const cfg = JSON.parse(window.localStorage.getItem("modah:whatsapp-messages") || "null");
-    if (!cfg?.enabled || !cfg.apiUrl || !data.phone) return;
+    if (!cfg?.enabled || !cfg.apiUrl || !data["phone"]) return;
     const templates: Record<string,string> = { compra: cfg.compra, pagamento: cfg.pagamento, parcelamento: cfg.parcelamento };
     const template = templates[event];
     if (!template) return;
     const message = String(template).replace(/\{(\w+)\}/g, (_: string, key: string) => data[key] ?? "");
-    void fetch(cfg.apiUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: data.phone, message, event }) }).catch(() => {});
+    void fetch(cfg.apiUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: data["phone"], message, event }) }).catch(() => {});
   } catch { /* ignore */ }
 }
 
