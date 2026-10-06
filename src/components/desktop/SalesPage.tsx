@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useStore } from "@/lib/store";
-import type { SaleItem, SalePaymentMethod, Product } from "@/lib/mock-data";
+import type { Sale, SaleItem, SalePaymentMethod, Product } from "@/lib/mock-data";
 import { brl, dateTime } from "@/lib/format";
 
 const methods: SalePaymentMethod[] = ["Pix", "Dinheiro", "Cartão Débito", "Cartão Crédito", "Ficha (AV)"];
@@ -53,7 +53,7 @@ function SaleEditorLayout(p:{products:Product[];items:SaleItem[];setItems:(x:Sal
   </div>
 }
 
-function SaleDetails({sale,onCancel,onExchange}:{sale:any;onCancel:()=>void;onExchange:()=>void}){
+function SaleDetails({sale,onCancel,onExchange}:{sale:Sale;onCancel:()=>void;onExchange:()=>void}){
   const {exchanges}=useStore(); const rows=exchanges.filter(e=>e.saleId===sale.id); const returned=new Map<string,number>(); rows.forEach(e=>returned.set(e.returned.saleItemId,(returned.get(e.returned.saleItemId)||0)+e.returned.quantity));
   return <div className="space-y-4 text-sm"><div className="grid grid-cols-2 gap-3"><div><span className="text-muted-foreground">Venda</span><p className="font-bold">#{sale.number}</p></div><div><span className="text-muted-foreground">Data</span><p>{dateTime(sale.date)}</p></div><div><span className="text-muted-foreground">Cliente</span><p>{sale.customerName}</p></div><div><span className="text-muted-foreground">Pagamento</span><p>{sale.paymentMethod}</p></div></div>
     <div className="rounded-xl bg-muted p-3">{sale.items.map((i:SaleItem)=>{const left=i.quantity-(returned.get(i.id)||0);return <div key={i.id} className="flex justify-between border-b py-2 last:border-0"><span>{i.productName} — {i.color}/{i.size} x{i.quantity}{left<i.quantity&&<span className="ml-2 text-xs text-warning">({left} disponível para devolução)</span>}</span><b>{brl(i.total)}</b></div>})}</div>
@@ -63,7 +63,7 @@ function SaleDetails({sale,onCancel,onExchange}:{sale:any;onCancel:()=>void;onEx
   </div>
 }
 
-function EditSaleForm({sale,onDone}:{sale:any;onDone:()=>void}){
+function EditSaleForm({sale,onDone}:{sale:Sale;onDone:()=>void}){
   const {products,customers,store,updateSale}=useStore();
   const [items,setItems]=useState<SaleItem[]>(sale.items); const [productId,setProductId]=useState(""); const [variation,setVariation]=useState(""); const [qty,setQty]=useState(1); const [customerId,setCustomerId]=useState(sale.customerId||""); const [method,setMethod]=useState<SalePaymentMethod>(sale.paymentMethod); const [discount,setDiscount]=useState(sale.discount); const [paid,setPaid]=useState(sale.amountPaid); const [dueDate,setDueDate]=useState(sale.dueDate||""); const [notes,setNotes]=useState(sale.notes||"");
   const product=products.find(p=>p.id===productId); const selectedVariation=product?.variations.find(v=>v.color+"|"+v.size===variation); const subtotal=items.reduce((n,i)=>n+i.total,0); const total=Math.max(0,subtotal-discount);
