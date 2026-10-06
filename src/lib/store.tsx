@@ -59,7 +59,7 @@ function sendConfiguredWhatsApp(event: "compra" | "pagamento" | "parcelamento", 
     if (!template) return;
     const message = String(template).replace(/\{(\w+)\}/g, (_: string, key: string) => data[key] ?? "");
     void fetch(cfg.apiUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ to: data.phone, message, event }) }).catch(() => {});
-  } catch {}
+  } catch { /* ignore */ }
 }
 
 function applySaleToCustomer(customer: Customer, sale: Pick<Sale, "customerId" | "paymentMethod" | "total" | "amountPaid" | "dueDate" | "items">, saleId: string, sign: 1 | -1, date: string) {
