@@ -11,6 +11,8 @@ export type AppUser = {
 
 const USERS_KEY = "modah:auth-users";
 const SESSION_KEY = "modah:auth-session";
+const RECOVERY_KEY = "modah:auth-recovery-code";
+const DEFAULT_RECOVERY_CODE = "CAIXA2026";
 export const ALL_PERMISSIONS: Permission[] = ["dashboard","clientes","vendas","produtos","gestao","configuracoes","estoque","reservas"];
 
 const adminUser: AppUser = {
@@ -24,12 +26,25 @@ async function hashPassword(value:string) {
   return Array.from(new Uint8Array(digest)).map((b)=>b.toString(16).padStart(2,"0")).join("");
 }
 
+function normalizeUser(u:Partial<AppUser>):AppUser {
+  const legacyPassword = (u as Partial<AppUser> & { password?: string }).password;
+  return {
+    ...adminUser,
+    ...u,
+    passwordHash: u.passwordHash || "",
+    permissions: Array.isArray(u.permissions)?u.permissions:[...ALL_PERMISSIONS],
+    accessMode:u.accessMode==="vendedor"?"vendedor":"gestao",
+    active:u.active!==false,
+    ...(legacyPassword ? { passwordHash: legacyPassword } : {}),
+  } as AppUser;
+}
+
 function loadUsers():AppUser[] {
   if(typeof window==="undefined") return [adminUser];
   try {
     const saved=JSON.parse(localStorage.getItem(USERS_KEY)||"null");
     if(!Array.isArray(saved)||!saved.length){ localStorage.setItem(USERS_KEY,JSON.stringify([adminUser])); return [adminUser]; }
-    const users=saved.map((u:Partial<AppUser>)=>({...adminUser,...u,permissions:Array.isArray(u.permissions)?u.permissions:[...ALL_PERMISSIONS],accessMode:u.accessMode==="vendedor"?"vendedor":"gestao",active:u.active!==false})) as AppUser[];
+    const users=saved.map((u:Partial<AppUser>)=>normalizeUser(u));
     if(!users.some((u)=>u.id==="admin")) users.unshift(adminUser);
     return users;
   } catch { return [adminUser]; }
@@ -40,7 +55,7 @@ type AuthValue = {
   login:(login:string,password:string)=>Promise<{ok:boolean;message?:string}>;
   logout:()=>void; addUser:(u:Omit<AppUser,"id">)=>void;
   updateUser:(id:string,patch:Partial<AppUser>)=>void; removeUser:(id:string)=>void;
-  changePassword:(id:string,password:string)=>Promise<void>; can:(permission:Permission)=>boolean;
+  changePassword:(id:string,password:string)=>Promise<void>; resetPassword:(login:string,code:string,password:string)=>Promise<{ok:boolean;message?:string}>; can:(permission:Permission)=>boolean;
 };
 const AuthContext=createContext<AuthValue|null>(null);
 
@@ -64,6 +79,16 @@ export function AuthProvider({children}:{children:ReactNode}){
     updateUser:(id,patch)=>persist(users.map((u)=>u.id===id?{...u,...patch}:u)),
     removeUser:(id)=>{if(id!=="admin")persist(users.filter((u)=>u.id!==id));},
     changePassword:async(id,password)=>{const passwordHash=await hashPassword(password);persist(users.map((u)=>u.id===id?{...u,passwordHash}:u));},
+    resetPassword:async(loginValue,code,password)=>{
+      const recoveryCode=localStorage.getItem(RECOVERY_KEY)||DEFAULT_RECOVERY_CODE;
+      if(code.trim()!==recoveryCode)return {ok:false,message:"Código de recuperação inválido."};
+      const found=users.find((u)=>u.login.toLowerCase()===loginValue.trim().toLowerCase());
+      if(!found)return {ok:false,message:"Usuário não encontrado."};
+      if(!password.trim()||password.trim().length<4)return {ok:false,message:"A nova senha deve ter pelo menos 4 caracteres."};
+      const passwordHash=await hashPassword(password.trim());
+      persist(users.map((u)=>u.id===found.id?{...u,passwordHash,active:true}:u));
+      return {ok:true};
+    },
     can:(permission)=>Boolean(user&&(isAdmin||user.permissions.includes(permission))),
   }),[users,user,isAdmin]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
