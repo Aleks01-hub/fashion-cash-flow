@@ -201,8 +201,7 @@ export function CustomerDetail({ customer, onBack }: { customer: Customer; onBac
       "PAGAMENTOS / ABATIMENTOS",
       ...customer.payments.map((p) => `- ${brl(p.amount)} | ${p.method} | ${dateTime(p.date)} | Saldo após: ${brl(p.balanceAfter)}`),
     ].filter(Boolean);
-    return lines.join("
-");
+    return lines.join("\n");
   }, [customer, st, balance, plan, planAmount]);
 
   const whatsappShare = `https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(exportText)}`;
