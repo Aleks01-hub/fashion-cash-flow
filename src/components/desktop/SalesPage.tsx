@@ -72,7 +72,7 @@ function EditSaleForm({sale,onDone}:{sale:Sale;onDone:()=>void}){
   return <SaleEditorLayout products={products}items={items}setItems={setItems}productId={productId}setProductId={setProductId}variation={variation}setVariation={setVariation}qty={qty}setQty={setQty}onAdd={add}customerId={customerId}setCustomerId={setCustomerId}customers={customers}method={method}setMethod={setMethod}discount={discount}setDiscount={x=>setDiscount(Math.min(subtotal,Math.max(0,x)))}paid={paid}setPaid={setPaid}dueDate={dueDate}setDueDate={setDueDate}notes={notes}setNotes={setNotes}subtotal={subtotal}total={total}onSubmit={submit}submitLabel="Salvar alterações" />
 }
 
-function ExchangeForm({sale,onDone}:{sale:any;onDone:()=>void}){
+function ExchangeForm({sale,onDone}:{sale:Sale;onDone:()=>void}){
   const {products,exchanges,registerExchange}=useStore(); const [returnedId,setReturnedId]=useState(""); const [returnedQty,setReturnedQty]=useState(1); const [replacementKey,setReplacementKey]=useState(""); const [replacementQty,setReplacementQty]=useState(1); const [notes,setNotes]=useState("");
   const returned=sale.items.find((i:SaleItem)=>i.id===returnedId); const already=returned?exchanges.filter(e=>e.saleId===sale.id&&e.returned.saleItemId===returned.id).reduce((n,e)=>n+e.returned.quantity,0):0; const remaining=returned?Math.max(0,returned.quantity-already):0;
   const replacement=useMemo(()=>{if(!replacementKey)return null;const [productId,color,size]=replacementKey.split("|");const p=products.find(x=>x.id===productId);const v=p?.variations.find(x=>x.color===color&&x.size===size);return p&&v?{p,v}:null},[products,replacementKey]);
