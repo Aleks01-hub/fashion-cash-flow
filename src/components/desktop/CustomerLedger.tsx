@@ -56,8 +56,7 @@ export function CustomerLedger({ customer, onBack, onEdit }: { customer: Custome
       "",
       `TOTAL DEVEDOR: ${brl(balance)}`,
     ].filter((l) => l !== "");
-    return lines.join("
-");
+    return lines.join("\n");
   }, [customer, rows, balance, quitada, late]);
 
   const whatsappShare = `https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(exportText)}`;
