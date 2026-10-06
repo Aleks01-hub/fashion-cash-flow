@@ -32,7 +32,7 @@ export function LoginScreen(){
       <div className="mb-8 text-center">
         <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-primary text-primary-foreground"><LockKeyhole className="h-7 w-7"/></div>
         <h1 className="mt-4 text-2xl font-black">Caixa Central</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{recovery?"Recupere o acesso à sua conta.":"Entre para acessar o sistema."}</p>
+        <p className="mt-1 text-sm text-muted-foreground">{recovery?"Recupere o acesso à sua conta.":"Entre para acessar o sistema."}</p>{!recovery&&<p className="mt-3 rounded-xl bg-muted p-2 text-xs text-muted-foreground">Primeiro acesso: <b>admin</b> / <b>admin</b>. Troque a senha depois de entrar.</p>}
       </div>
       <div className="space-y-4">
         <div><Label>Login</Label><div className="relative mt-1"><UserCircle className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"/><Input autoFocus value={loginValue} onChange={e=>setLoginValue(e.target.value)} className="pl-9" placeholder="Seu login"/></div></div>
