@@ -54,7 +54,7 @@ export function ProfileSettingsSection(){
   const saveUser=async()=>{
     if(!userForm.name.trim()||!userForm.login.trim()||(!editingId&&!userForm.password.trim()))return;
     if(userForm.accessMode==="gestao"&&!userForm.permissions.includes("gestao"))setUserForm(f=>({...f,permissions:[...f.permissions,"gestao"]}));
-    const permissions=userForm.accessMode==="gestao"&& !userForm.permissions.includes("gestao")?[...userForm.permissions,"gestao"]:userForm.permissions;
+    const permissions=userForm.accessMode==="gestao"&& !userForm.permissions.includes("gestao")?[...userForm.permissions,"gestao" as Permission]:userForm.permissions;
     if(editingId){
       updateUser(editingId,{name:userForm.name.trim(),login:userForm.login.trim(),role:userForm.role,accessMode:userForm.accessMode,permissions,active:userForm.active});
       if(userForm.password.trim())await changePassword(editingId,userForm.password.trim());
@@ -117,7 +117,7 @@ export function ProfileSettingsSection(){
       <div className="space-y-4">
         <label className="flex items-center justify-between rounded-xl border p-3 text-sm"><span><b>Ativar integração</b><br/><span className="text-xs text-muted-foreground">O segredo da API fica no servidor.</span></span><input type="checkbox" checked={whatsapp.enabled} onChange={e=>setWhatsapp({...whatsapp,enabled:e.target.checked})}/></label>
         <div className="grid gap-3 md:grid-cols-2"><div><Label>Endpoint de envio</Label><Input value={whatsapp.apiUrl} onChange={e=>setWhatsapp({...whatsapp,apiUrl:e.target.value})}/></div><div><Label>Phone Number ID</Label><Input value={whatsapp.phoneNumberId} onChange={e=>setWhatsapp({...whatsapp,phoneNumberId:e.target.value})}/></div></div>
-        <div className="grid gap-3 md:grid-cols-2">{[["ficha","Nova ficha"],["compra","Compra adicionada"],["pagamento","Pagamento/abatimento"],["parcelamento","Parcelamento"],["cobranca","Cobrança"]].map(([key,label])=><div key={key}><Label>{label}</Label><textarea className="mt-1 min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm" value={whatsapp[key as keyof WhatsAppMessages] as string} onChange={e=>setWhatsapp({...whatsapp,[key]:e.target.value})}/></div>)}</div>
+        <div className="grid gap-3 md:grid-cols-2">{[["ficha","Nova ficha"],["compra","Compra adicionada"],["pagamento","Pagamento/abatimento"],["parcelamento","Parcelamento"],["cobranca","Cobrança"]].map(([key,label])=><div key={key}><Label>{label}</Label><textarea className="mt-1 min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm" value={whatsapp[key as keyof WhatsAppMessages] as string} onChange={e=>setWhatsapp({...whatsapp,[key as string]:e.target.value})}/></div>)}</div>
         <p className="rounded-xl bg-muted p-3 text-xs text-muted-foreground">Variáveis: <b>{"{cliente}"}</b>, <b>{"{valor}"}</b>, <b>{"{saldo}"}</b>, <b>{"{parcelas}"}</b>, <b>{"{parcela}"}</b>, <b>{"{vencimento}"}</b>.</p>
         <Button onClick={save}><Save className="h-4 w-4"/>Salvar WhatsApp</Button>
       </div>
