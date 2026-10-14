@@ -42,6 +42,15 @@ export type ApiSaleItem = {
   id?: string; productId?: string; variationId?: string; productName?: string; color?: string; size?: string;
   quantity: number; unitPrice: number; total?: number;
 };
+export type ApiAvPayment = {
+  id: string; amount: string | number; balanceBefore: string | number; balanceAfter: string | number;
+  method: "PIX" | "CASH" | "DEBIT" | "CREDIT" | "TRANSFER" | "OTHER"; paidAt: string; notes?: string | null;
+};
+export type ApiAvAccount = {
+  id: string; customerId: string; customerName: string; description: string;
+  originalAmount: string | number; currentBalance: string | number; createdAt: string;
+  dueDate?: string | null; status: "ACTIVE" | "PAID" | "OVERDUE"; payments: ApiAvPayment[];
+};
 export type ApiSale = {
   id: string; number?: number; date?: string; customerId?: string | null; customerName?: string | null;
   seller?: string | null; total: number; subtotal?: number; discount?: number; amountPaid?: number;
