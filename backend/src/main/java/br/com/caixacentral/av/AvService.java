@@ -84,6 +84,13 @@ public class AvService {
     }
 
     @Transactional
+    public List<AccountView> listAll() {
+        return accounts.findAll().stream()
+            .map(a -> view(a, payments.findByAccount_IdOrderByPaidAtDesc(a.getId()).stream().map(AvService::paymentView).toList()))
+            .toList();
+    }
+
+    @Transactional
     public List<AccountView> byCustomer(UUID customerId) {
         if (!customers.existsById(customerId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cliente não encontrado.");
