@@ -12,6 +12,9 @@ public class AvController {
     private final AvService service;
     public AvController(AvService service) { this.service = service; }
 
+    @GetMapping
+    public List<AvService.AccountView> listAll() { return service.listAll(); }
+
     @GetMapping("/cliente/{customerId}")
     public List<AvService.AccountView> byCustomer(@PathVariable UUID customerId) {
         return service.byCustomer(customerId);
