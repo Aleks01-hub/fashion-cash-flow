@@ -19,7 +19,7 @@ O backend está configurado para MySQL 8.4 com Connector/J. O docker-compose.yml
 - `GET/POST /api/sales`
 - `GET/POST /api/products/{productId}/variations`
 - `PATCH /api/products/{productId}/variations/{variationId}/stock`
-- `GET /api/contas-av/cliente/{customerId}` e `GET /api/contas-av/{accountId}`
+- `GET /api/contas-av` para listar todas as contas; `GET /api/contas-av/cliente/{customerId}` e `GET /api/contas-av/{accountId}`
 - `POST /api/contas-av` para criar uma conta a receber
 - `POST /api/contas-av/{accountId}/abatimento` para registrar pagamento/abatimento
 
