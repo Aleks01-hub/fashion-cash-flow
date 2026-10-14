@@ -37,14 +37,13 @@ O módulo AV usa tabelas próprias av_accounts e av_payments. Os valores finance
 - O frontend ainda não foi migrado do localStorage para a API e não sincroniza automaticamente as telas existentes.
 - Ainda falta autenticação/autorização de servidor e isolamento de dados por loja/tenant.
 - Valores monetários em partes antigas do modelo de produtos/vendas ainda usam double; migrar para BigDecimal requer atualização coordenada de DTOs, cálculos, testes e frontend.
-- O número de venda continua provisório e precisa de sequência atômica para uso concorrente.
 - Configure CORS para os domínios exatos de implantação; nunca exponha credenciais do banco ou chaves de IA no frontend.
 - O backend e o fluxo completo precisam de testes automatizados e validação ponta a ponta antes de uso com vendas reais.
 
 ## Próximas etapas
 
 1. Ampliar os testes automatizados com testes de integração reais usando MySQL para venda, estoque e AV (há testes unitários de AV para abatimento parcial, quitação e validações).
-2. Migrar as telas de clientes e AV para storeService, com plano de importação dos dados locais.
+2. Migrar as telas de clientes e vendas para storeService, com plano de importação dos dados locais.
 3. Implementar autenticação e isolamento por loja.
-4. Migrar os valores monetários antigos para BigDecimal e substituir o contador provisório de vendas.
+4. Migrar os valores monetários antigos para BigDecimal.
 5. Integrar WebSocket, PWA/offline e fila de sincronização com resolução de conflitos.
