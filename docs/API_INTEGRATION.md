@@ -43,7 +43,7 @@ O módulo AV usa tabelas próprias av_accounts e av_payments. Os valores finance
 
 ## Próximas etapas
 
-1. Adicionar testes de integração com MySQL para venda, estoque e AV.
+1. Ampliar os testes automatizados com testes de integração reais usando MySQL para venda, estoque e AV (há testes unitários de AV para abatimento parcial, quitação e validações).
 2. Migrar as telas de clientes e AV para storeService, com plano de importação dos dados locais.
 3. Implementar autenticação e isolamento por loja.
 4. Migrar os valores monetários antigos para BigDecimal e substituir o contador provisório de vendas.
