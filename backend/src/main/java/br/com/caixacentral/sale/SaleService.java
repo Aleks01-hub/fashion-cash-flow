@@ -18,14 +18,14 @@ public class SaleService {
     private final SaleRepository sales;
     private final ProductRepository products;
     private final VariationRepository variations;
-    private final ApplicationEventPublisher events;
+    private final ApplicationEventPublisher events;\n    private final SaleNumberSequenceRepository numberSequences;
 
     public SaleService(SaleRepository sales, ProductRepository products,
-                       VariationRepository variations, ApplicationEventPublisher events) {
+                       VariationRepository variations, ApplicationEventPublisher events,\n                       SaleNumberSequenceRepository numberSequences) {
         this.sales = sales;
         this.products = products;
         this.variations = variations;
-        this.events = events;
+        this.events = events;\n        this.numberSequences = numberSequences;
     }
 
     @Transactional
