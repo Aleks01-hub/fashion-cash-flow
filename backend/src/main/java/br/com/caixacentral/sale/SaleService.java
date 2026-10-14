@@ -7,7 +7,6 @@ import br.com.caixacentral.product.VariationRepository;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -31,7 +30,6 @@ public class SaleService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A venda precisa ter ao menos um item");
         }
         if (sale.getDiscount() < 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Desconto não pode ser negativo");
-
         double subtotal = 0;
         Set<String> requested = new HashSet<>();
         for (SaleItem item : sale.getItems()) {
@@ -39,20 +37,18 @@ public class SaleService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Quantidade e preço inválidos");
             }
             Variation variation = findAndLockVariation(item);
-            String key = variation.getId().toString();
-            if (!requested.add(key)) {
+            if (!requested.add(variation.getId().toString())) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Envie cada variação apenas uma vez por venda");
             }
             if (variation.getQuantity() < item.getQuantity()) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Estoque insuficiente para " + variation.getColor() + " / " + variation.getSize());
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Estoque insuficiente para " + variation.getColor() + " / " + variation.getSize());
             }
             variation.setQuantity(variation.getQuantity() - item.getQuantity());
             variations.save(variation);
-
             Product product = products.findById(variation.getProductId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produto não encontrado"));
             item.setProductId(product.getId());
+            item.setVariationId(variation.getId());
             item.setProductName(product.getName());
             item.setColor(variation.getColor());
             item.setSize(variation.getSize());
@@ -60,14 +56,13 @@ public class SaleService {
             subtotal += item.getTotal();
             item.setSale(sale);
         }
-
-        double discount = sale.getDiscount();
-        if (discount > subtotal) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Desconto maior que o subtotal");
+        if (sale.getDiscount() > subtotal) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Desconto maior que o subtotal");
         sale.setSubtotal(roundMoney(subtotal));
-        sale.setTotal(roundMoney(subtotal - discount));
+        sale.setTotal(roundMoney(subtotal - sale.getDiscount()));
         if (sale.getAmountPaid() < 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valor recebido inválido");
         if (sale.getDate() == null) sale.setDate(Instant.now());
-        if (sale.getNumber() <= 0) sale.setNumber(sales.nextSaleNumber());
+        // Número sequencial provisório para MVP; substituir por sequência atômica antes de vendas concorrentes.
+        if (sale.getNumber() <= 0) sale.setNumber(sales.count() + 1);
         return sales.save(sale);
     }
 
@@ -77,14 +72,11 @@ public class SaleService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Variação não encontrada"));
         }
         if (item.getProductId() == null || item.getColor() == null || item.getSize() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                "Cada item deve informar variationId ou productId, color e size");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe variationId ou productId, color e size em cada item");
         }
         return variations.findByProductAndColorAndSizeForUpdate(item.getProductId(), item.getColor(), item.getSize())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Variação não encontrada para produto/cor/tamanho"));
     }
 
-    private double roundMoney(double value) {
-        return Math.round((value + 1e-9) * 100.0) / 100.0;
-    }
+    private double roundMoney(double value) { return Math.round((value + 1e-9) * 100.0) / 100.0; }
 }
