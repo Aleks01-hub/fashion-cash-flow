@@ -84,7 +84,7 @@ export function DesktopPanel() {
       <div className="flex items-center gap-3"><Button variant="outline" size="icon" onClick={() => setMenuOpen(true)}><Menu className="h-5 w-5" /></Button><h1 className="text-lg font-bold">{NAV.find((n) => n.id === section)?.label}</h1><span className="ml-auto text-xs text-muted-foreground">{user?.name}</span><Button variant="outline" size="sm" onClick={logout}>Sair</Button></div>
 
       {section === "av-api" && <AvAccountsPanel />}
-      {section === "vendas" && <SalesPage />
+      {section === "vendas" && <SalesPage />}
       {section === "produtos" && <ProductsSection />}
 
       {section === "fichas" && selected && <CustomerLedger customer={selected} onBack={() => setSelectedId(null)} onEdit={() => setEditingCustomerId(selected.id)} />}
