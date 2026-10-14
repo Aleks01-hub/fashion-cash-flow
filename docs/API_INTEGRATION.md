@@ -8,8 +8,16 @@ O frontend existente continua preservando o modo local usado pelo MVP. Foi adici
 - `GET/POST/PUT/DELETE /api/customers`
 - `GET/POST/PUT/DELETE /api/products`
 - `GET/POST /api/sales`
+- `GET/POST /api/products/{productId}/variations`
+- `PATCH /api/products/{productId}/variations/{variationId}/stock`
 
 O cliente está disponível como `storeService`. Ele ainda não substitui automaticamente o `StoreProvider`: a migração deve ser feita módulo por módulo e validada com dados reais antes de desligar o armazenamento local.
+
+## Estoque por variação e vendas
+
+O backend agora possui uma entidade de variação por produto/cor/tamanho. A criação de venda usa uma transação, bloqueia as variações afetadas para atualização, valida o estoque e só então grava a venda e baixa as quantidades. Se qualquer item falhar, a transação deve ser revertida. Para criar uma venda, cada item precisa informar `variationId` ou a combinação `productId`, `color` e `size`, além de `quantity` e `unitPrice`.
+
+As notificações STOMP são publicadas em `/topic/vendas` após o commit da transação. O endpoint WebSocket é `/ws`. O frontend ainda precisa instalar/configurar um cliente STOMP e assinar o tópico para atualizar a interface em tempo real.
 
 ## Executar localmente
 
@@ -21,19 +29,18 @@ O cliente está disponível como `storeService`. Ele ainda não substitui automa
 ## Limitações que precisam ser resolvidas antes de produção
 
 - O backend existente usa PostgreSQL e IDs UUID. Esta integração mantém o banco atual para não quebrar o projeto; MySQL exigirá driver, configuração e validação próprios.
-- Os endpoints atuais não implementam ainda isolamento por loja nem autenticação/autorização de servidor.
-- A entidade de venda atual ainda não efetua baixa transacional de estoque por variação. Não use o endpoint de vendas para operação real até implementar essa regra e testes de concorrência.
-- AV precisa de entidades próprias para contas e pagamentos, com transações e trilha de auditoria.
-- CORS não deve usar origem curinga em produção.
+- O frontend ainda não foi migrado do `localStorage` para a API e não está sincronizando automaticamente os dados de telas existentes.
+- O backend ainda não implementa isolamento por loja nem autenticação/autorização de servidor.
+- Contas AV e pagamentos ainda precisam de entidades próprias e trilha de auditoria transacional.
+- O número de venda é provisório; deve ser substituído por sequência atômica antes de vendas concorrentes.
+- CORS deve ser configurado para os domínios exatos da implantação.
 - Não envie chaves de IA ou segredos do banco ao frontend.
-- O cliente lança `ApiError` em respostas HTTP não bem-sucedidas; as telas devem tratar os erros e apresentar feedback ao operador.
 
 ## Próxima ordem de trabalho
 
-1. Implementar estoque por variação e serviço de vendas transacional no backend.
-2. Implementar contas AV e pagamentos com saldo calculado no servidor.
-3. Adicionar autenticação e escopo por loja.
-4. Migrar leitura de produtos/clientes para a API, mantendo fallback explícito durante a transição.
-5. Migrar vendas e AV somente depois dos testes automatizados.
-6. Adicionar WebSocket/STOMP e interface de reconexão.
-7. Implementar PWA/offline com fila sincronizada e estratégia de conflitos.
+1. Implementar contas AV e pagamentos com saldo calculado no servidor.
+2. Adicionar autenticação e escopo por loja.
+3. Migrar leitura de produtos/clientes para a API, mantendo fallback explícito durante a transição.
+4. Migrar vendas e AV somente depois dos testes automatizados.
+5. Integrar o cliente STOMP na interface.
+6. Implementar PWA/offline com fila sincronizada e estratégia de conflitos.
