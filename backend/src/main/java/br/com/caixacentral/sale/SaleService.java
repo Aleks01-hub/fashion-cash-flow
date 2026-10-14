@@ -18,14 +18,17 @@ public class SaleService {
     private final SaleRepository sales;
     private final ProductRepository products;
     private final VariationRepository variations;
-    private final ApplicationEventPublisher events;\n    private final SaleNumberSequenceRepository numberSequences;
+    private final ApplicationEventPublisher events;
+    private final SaleNumberSequenceRepository numberSequences;
 
     public SaleService(SaleRepository sales, ProductRepository products,
-                       VariationRepository variations, ApplicationEventPublisher events,\n                       SaleNumberSequenceRepository numberSequences) {
+                       VariationRepository variations, ApplicationEventPublisher events,
+                       SaleNumberSequenceRepository numberSequences) {
         this.sales = sales;
         this.products = products;
         this.variations = variations;
-        this.events = events;\n        this.numberSequences = numberSequences;
+        this.events = events;
+        this.numberSequences = numberSequences;
     }
 
     @Transactional
@@ -65,8 +68,16 @@ public class SaleService {
         sale.setTotal(roundMoney(subtotal - sale.getDiscount()));
         if (sale.getAmountPaid() < 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valor recebido inválido");
         if (sale.getDate() == null) sale.setDate(Instant.now());
-        // Número sequencial provisório para MVP; substituir por sequência atômica antes de vendas concorrentes.
-        if (sale.getNumber() <= 0) sale.setNumber(sales.count() + 1);
+        // A linha é bloqueada dentro da transação para gerar números sem colisão em vendas concorrentes.
+        if (sale.getNumber() <= 0) {
+            numberSequences.ensureSequenceExists();
+            SaleNumberSequence sequence = numberSequences.lockSequence()
+                .orElseThrow(() -> new IllegalStateException("Não foi possível inicializar a sequência de vendas"));
+            long nextNumber = sequence.getNextNumber();
+            sequence.setNextNumber(nextNumber + 1);
+            numberSequences.save(sequence);
+            sale.setNumber(nextNumber);
+        }
         Sale saved = sales.save(sale);
         events.publishEvent(SaleCreatedEvent.from(saved));
         return saved;
