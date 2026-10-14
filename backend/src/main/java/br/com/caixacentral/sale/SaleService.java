@@ -68,16 +68,14 @@ public class SaleService {
         sale.setTotal(roundMoney(subtotal - sale.getDiscount()));
         if (sale.getAmountPaid() < 0) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Valor recebido inválido");
         if (sale.getDate() == null) sale.setDate(Instant.now());
-        // A linha é bloqueada dentro da transação para gerar números sem colisão em vendas concorrentes.
-        if (sale.getNumber() <= 0) {
-            numberSequences.ensureSequenceExists();
-            SaleNumberSequence sequence = numberSequences.lockSequence()
-                .orElseThrow(() -> new IllegalStateException("Não foi possível inicializar a sequência de vendas"));
-            long nextNumber = sequence.getNextNumber();
-            sequence.setNextNumber(nextNumber + 1);
-            numberSequences.save(sequence);
-            sale.setNumber(nextNumber);
-        }
+        // O número é sempre gerado no servidor, com bloqueio para evitar colisões em vendas concorrentes.
+        numberSequences.ensureSequenceExists();
+        SaleNumberSequence sequence = numberSequences.lockSequence()
+            .orElseThrow(() -> new IllegalStateException("Não foi possível inicializar a sequência de vendas"));
+        long nextNumber = sequence.getNextNumber();
+        sequence.setNextNumber(nextNumber + 1);
+        numberSequences.save(sequence);
+        sale.setNumber(nextNumber);
         Sale saved = sales.save(sale);
         events.publishEvent(SaleCreatedEvent.from(saved));
         return saved;
