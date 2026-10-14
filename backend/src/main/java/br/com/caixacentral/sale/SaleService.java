@@ -7,6 +7,7 @@ import br.com.caixacentral.product.VariationRepository;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -17,11 +18,14 @@ public class SaleService {
     private final SaleRepository sales;
     private final ProductRepository products;
     private final VariationRepository variations;
+    private final ApplicationEventPublisher events;
 
-    public SaleService(SaleRepository sales, ProductRepository products, VariationRepository variations) {
+    public SaleService(SaleRepository sales, ProductRepository products,
+                       VariationRepository variations, ApplicationEventPublisher events) {
         this.sales = sales;
         this.products = products;
         this.variations = variations;
+        this.events = events;
     }
 
     @Transactional
@@ -63,7 +67,9 @@ public class SaleService {
         if (sale.getDate() == null) sale.setDate(Instant.now());
         // Número sequencial provisório para MVP; substituir por sequência atômica antes de vendas concorrentes.
         if (sale.getNumber() <= 0) sale.setNumber(sales.count() + 1);
-        return sales.save(sale);
+        Sale saved = sales.save(sale);
+        events.publishEvent(SaleCreatedEvent.from(saved));
+        return saved;
     }
 
     private Variation findAndLockVariation(SaleItem item) {
