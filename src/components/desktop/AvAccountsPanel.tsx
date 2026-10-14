@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { RefreshCw, PlusCircle, Wallet, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,7 @@ export function AvAccountsPanel() {
 
   const filtered = accounts.filter((a) => !search || [a.customerName, a.description, statusText[a.status]].join(" ").toLowerCase().includes(search.toLowerCase()));
 
-  async function createAccount(event: React.FormEvent<HTMLFormElement>) {
+  async function createAccount(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const numericAmount = Number(amount.replace(",", "."));
     if (!customerId || !description.trim() || !Number.isFinite(numericAmount) || numericAmount <= 0) {
