@@ -77,6 +77,15 @@ export const storeService = {
     adjustStock: (productId: string, variationId: string, quantity: number, operation: "entrada" | "saida") =>
       request<ApiVariation>(`/products/${encodeURIComponent(productId)}/variations/${encodeURIComponent(variationId)}/stock`, { method: "PATCH", body: { quantity, operation } }),
   },
+  av: {
+    list: () => request<ApiAvAccount[]>("/contas-av"),
+    byCustomer: (customerId: string) => request<ApiAvAccount[]>(`/contas-av/cliente/${encodeURIComponent(customerId)}`),
+    get: (accountId: string) => request<ApiAvAccount>(`/contas-av/${encodeURIComponent(accountId)}`),
+    create: (input: { customerId: string; description: string; amount: number; dueDate?: string | null }) =>
+      request<ApiAvAccount>("/contas-av", { method: "POST", body: input }),
+    registerPayment: (accountId: string, input: { amount: number; method: ApiAvPayment["method"]; notes?: string }) =>
+      request<ApiAvAccount>(`/contas-av/${encodeURIComponent(accountId)}/abatimento`, { method: "POST", body: input }),
+  },
   sales: {
     list: () => request<ApiSale[]>("/sales"),
     get: (id: string) => request<ApiSale>(`/sales/${encodeURIComponent(id)}`),
