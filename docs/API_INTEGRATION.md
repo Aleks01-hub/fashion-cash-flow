@@ -1,8 +1,17 @@
 # Integração frontend ↔ backend
 
-## Estado desta etapa
+## Banco de dados: MySQL 8.4
 
-O frontend existente continua preservando o modo local usado pelo MVP. Foi adicionado `src/lib/api-client.ts`, um cliente HTTP tipado para os endpoints atuais do backend:
+O backend está configurado para MySQL 8.4 com Connector/J. O docker-compose.yml sobe o serviço mysql e mantém os dados no volume caixa-central-mysql. Para iniciar um ambiente local novo:
+
+1. Copie .env.docker.example para .env e altere as senhas de desenvolvimento.
+2. Execute `docker compose up -d` e aguarde o healthcheck do MySQL.
+3. Na pasta backend/, execute `mvn spring-boot:run`.
+4. No frontend, configure `VITE_API_BASE_URL=http://localhost:8080/api` em .env.local, depois execute `npm install && npm run dev`.
+
+**Atenção:** trocar o Compose para MySQL não converte nem copia dados de um volume PostgreSQL existente. Faça backup e migração explícita antes de reaproveitar dados antigos. O ddl-auto: update é conveniente no desenvolvimento; em produção, use migrações versionadas (Flyway/Liquibase), backups e credenciais fortes.
+
+## Endpoints disponíveis
 
 - `GET /api/health`
 - `GET/POST/PUT/DELETE /api/customers`
@@ -10,37 +19,32 @@ O frontend existente continua preservando o modo local usado pelo MVP. Foi adici
 - `GET/POST /api/sales`
 - `GET/POST /api/products/{productId}/variations`
 - `PATCH /api/products/{productId}/variations/{variationId}/stock`
+- `GET /api/contas-av/cliente/{customerId}` e `GET /api/contas-av/{accountId}`
+- `POST /api/contas-av` para criar uma conta a receber
+- `POST /api/contas-av/{accountId}/abatimento` para registrar pagamento/abatimento
 
-O cliente está disponível como `storeService`. Ele ainda não substitui automaticamente o `StoreProvider`: a migração deve ser feita módulo por módulo e validada com dados reais antes de desligar o armazenamento local.
+O cliente HTTP tipado está em src/lib/api-client.ts, exportado como storeService. Os métodos storeService.av já apontam para os endpoints de AV. A interface existente ainda usa localStorage em seus fluxos atuais; adicionar o serviço não migra automaticamente os dados/telas para o backend.
 
-## Estoque por variação e vendas
+## Estoque, vendas e AV
 
-O backend agora possui uma entidade de variação por produto/cor/tamanho. A criação de venda usa uma transação, bloqueia as variações afetadas para atualização, valida o estoque e só então grava a venda e baixa as quantidades. Se qualquer item falhar, a transação deve ser revertida. Para criar uma venda, cada item precisa informar `variationId` ou a combinação `productId`, `color` e `size`, além de `quantity` e `unitPrice`.
+O backend tem variações por produto/cor/tamanho. A criação de venda usa transação, bloqueia variações para atualização e baixa estoque dentro da mesma transação. Notificações STOMP são publicadas em /topic/vendas após o commit, no endpoint /ws. O frontend ainda precisa de um cliente STOMP para assinar o tópico.
 
-As notificações STOMP são publicadas em `/topic/vendas` após o commit da transação. O endpoint WebSocket é `/ws`. O frontend ainda precisa instalar/configurar um cliente STOMP e assinar o tópico para atualizar a interface em tempo real.
+O módulo AV usa tabelas próprias av_accounts e av_payments. Os valores financeiros desse módulo usam BigDecimal, cada pagamento registra saldo anterior e posterior, e o saldo é atualizado sob bloqueio pessimista para impedir abatimentos concorrentes que ultrapassem o saldo. A API retorna DTOs para não expor entidades JPA diretamente.
 
-## Executar localmente
+## Limitações antes de produção
 
-1. Inicie o banco configurado pelo projeto com `docker compose up -d`.
-2. Inicie a API a partir de `backend/` com `mvn spring-boot:run`.
-3. Na raiz do frontend, copie `.env.example` para `.env.local` e confirme `VITE_API_BASE_URL=http://localhost:8080/api`.
-4. Execute `npm install` e `npm run dev`.
+- O backend usa IDs UUID; o Hibernate mapeia esses IDs no MySQL. Isso difere de um modelo com IDs BIGINT e requer que o frontend envie IDs retornados pela API.
+- O frontend ainda não foi migrado do localStorage para a API e não sincroniza automaticamente as telas existentes.
+- Ainda falta autenticação/autorização de servidor e isolamento de dados por loja/tenant.
+- Valores monetários em partes antigas do modelo de produtos/vendas ainda usam double; migrar para BigDecimal requer atualização coordenada de DTOs, cálculos, testes e frontend.
+- O número de venda continua provisório e precisa de sequência atômica para uso concorrente.
+- Configure CORS para os domínios exatos de implantação; nunca exponha credenciais do banco ou chaves de IA no frontend.
+- O backend e o fluxo completo precisam de testes automatizados e validação ponta a ponta antes de uso com vendas reais.
 
-## Limitações que precisam ser resolvidas antes de produção
+## Próximas etapas
 
-- O backend existente usa PostgreSQL e IDs UUID. Esta integração mantém o banco atual para não quebrar o projeto; MySQL exigirá driver, configuração e validação próprios.
-- O frontend ainda não foi migrado do `localStorage` para a API e não está sincronizando automaticamente os dados de telas existentes.
-- O backend ainda não implementa isolamento por loja nem autenticação/autorização de servidor.
-- Contas AV e pagamentos ainda precisam de entidades próprias e trilha de auditoria transacional.
-- O número de venda é provisório; deve ser substituído por sequência atômica antes de vendas concorrentes.
-- CORS deve ser configurado para os domínios exatos da implantação.
-- Não envie chaves de IA ou segredos do banco ao frontend.
-
-## Próxima ordem de trabalho
-
-1. Implementar contas AV e pagamentos com saldo calculado no servidor.
-2. Adicionar autenticação e escopo por loja.
-3. Migrar leitura de produtos/clientes para a API, mantendo fallback explícito durante a transição.
-4. Migrar vendas e AV somente depois dos testes automatizados.
-5. Integrar o cliente STOMP na interface.
-6. Implementar PWA/offline com fila sincronizada e estratégia de conflitos.
+1. Adicionar testes de integração com MySQL para venda, estoque e AV.
+2. Migrar as telas de clientes e AV para storeService, com plano de importação dos dados locais.
+3. Implementar autenticação e isolamento por loja.
+4. Migrar os valores monetários antigos para BigDecimal e substituir o contador provisório de vendas.
+5. Integrar WebSocket, PWA/offline e fila de sincronização com resolução de conflitos.
