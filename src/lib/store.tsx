@@ -118,6 +118,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       try {
         let remoteProducts = await api.get<ApiProduct[]>("/api/products");
         let remoteCustomers = await api.get<ApiCustomer[]>("/api/customers");
+        const remoteSales = await api.get<Sale[]>("/api/sales");
+        const remoteMovements = await api.get<StockMovement[]>("/api/stock/movements");
 
         if (remoteProducts.length === 0) {
           for (const product of products) await api.post<ApiProduct>("/api/products", productToApi(product));
@@ -130,6 +132,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         if (remoteProducts.length) setProducts(remoteProducts.map(productFromApi));
         if (remoteCustomers.length) setCustomers(remoteCustomers.map(customerFromApi));
+        setSales(remoteSales);
+        if (remoteMovements.length) setStockMovements(remoteMovements);
         apiReady.current = true;
       } catch (error) {
         console.error("API initialization failed; keeping the local cache available.", error);
@@ -369,11 +373,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [push]);
   const restock = useCallback((productId: string, color: string, size: string, qty: number, note = "Entrada manual") => {
     if (qty <= 0) return;
-    setProducts((prev) => prev.map((p) => p.id !== productId ? p : { ...p, variations: p.variations.map((v) => v.color === color && v.size === size ? { ...v, qty: v.qty + qty } : v) }));
     const p = products.find((x) => x.id === productId);
     const v = p?.variations.find((x) => x.color === color && x.size === size);
-    if (p && v) pushMovement({ type: "entrada", productId, productName: p.name, color, size, quantity: qty, note });
-    push("Entrada de estoque: " + color + " " + size + " +" + qty);
+    if (!p || !v) { toast.error("Produto ou variação não encontrada."); return; }
+    void api.post("/api/stock/adjustments", { productId, color, size, quantity: qty, type: "entrada", note })
+      .then(() => {
+        setProducts((prev) => prev.map((item) => item.id !== productId ? item : { ...item, variations: item.variations.map((variation) => variation.color === color && variation.size === size ? { ...variation, qty: variation.qty + qty } : variation) }));
+        pushMovement({ type: "entrada", productId, productName: p.name, color, size, quantity: qty, note });
+        push("Entrada de estoque: " + color + " " + size + " +" + qty);
+      })
+      .catch((error) => toast.error(error instanceof Error ? error.message : "Não foi possível atualizar o estoque na API."));
   }, [push, products, pushMovement]);
 
   const updateProduct = useCallback((id: string, patch: Partial<Product>) => setProducts((prev) => prev.map((p) => p.id === id ? { ...p, ...patch } : p)), []);
