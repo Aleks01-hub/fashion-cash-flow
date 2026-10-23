@@ -1,4 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { api } from "./api";
+import { customerFromApi, customerToApi, productFromApi, productToApi, type ApiCustomer, type ApiProduct } from "./api-mappers";
 import { toast } from "sonner";
 import { customers as seedCustomers, products as seedProducts, reservations as seedReservations, sales as seedSales, stores, type Customer, type Product, type Reservation, type Sale, type SalePaymentMethod } from "./mock-data";
 import { brl, isOverdue } from "./format";
@@ -105,11 +107,102 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [online, setOnline] = useState(true);
   const [feed, setFeed] = useState<{ id: string; text: string; at: string }[]>([]);
 
+  const apiReady = useRef(false);
+  const apiSyncing = useRef(false);
+
+  // Products and customers are loaded from the API first. Existing local data is
+  // imported only when the corresponding server collection is empty.
+  useEffect(() => {
+    let cancelled = false;
+    const initializeApiData = async () => {
+      try {
+        let remoteProducts = await api.get<ApiProduct[]>("/api/products");
+        let remoteCustomers = await api.get<ApiCustomer[]>("/api/customers");
+
+        if (remoteProducts.length === 0) {
+          for (const product of products) await api.post<ApiProduct>("/api/products", productToApi(product));
+          remoteProducts = await api.get<ApiProduct[]>("/api/products");
+        }
+        if (remoteCustomers.length === 0) {
+          for (const customer of customers) await api.post<ApiCustomer>("/api/customers", customerToApi(customer));
+          remoteCustomers = await api.get<ApiCustomer[]>("/api/customers");
+        }
+        if (cancelled) return;
+        if (remoteProducts.length) setProducts(remoteProducts.map(productFromApi));
+        if (remoteCustomers.length) setCustomers(remoteCustomers.map(customerFromApi));
+        apiReady.current = true;
+      } catch (error) {
+        console.error("API initialization failed; keeping the local cache available.", error);
+        toast.error("API indisponível. Produtos e clientes permanecem no cache local até reconectar.");
+      }
+    };
+    void initializeApiData();
+    return () => { cancelled = true; };
+    // Initial local data is used only as a one-time import source for an empty API.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => { window.localStorage.setItem("modah:products", JSON.stringify(products)); }, [products]);
   useEffect(() => { window.localStorage.setItem("modah:customers", JSON.stringify(customers)); }, [customers]);
   useEffect(() => { window.localStorage.setItem("modah:sales", JSON.stringify(sales)); }, [sales]);
   useEffect(() => { window.localStorage.setItem("modah:exchanges", JSON.stringify(exchanges)); }, [exchanges]);
   useEffect(() => { window.localStorage.setItem("modah:stock-movements", JSON.stringify(stockMovements.slice(0, 500))); }, [stockMovements]);
+
+  // Upsert product/customer changes to the API. localStorage remains a temporary
+  // recovery cache; it is no longer the source of truth for these two collections.
+  useEffect(() => {
+    if (!apiReady.current || apiSyncing.current) return;
+    apiSyncing.current = true;
+    void (async () => {
+      try {
+        const remote = await api.get<ApiProduct[]>("/api/products");
+        const byId = new Map(remote.map((item) => [item.id, item]));
+        for (const product of products) {
+          const payload = productToApi(product);
+          if (byId.has(product.id)) {
+            await api.put<ApiProduct>("/api/products/" + product.id, payload);
+          } else {
+            const created = await api.post<ApiProduct>("/api/products", payload);
+            if (created.id && created.id !== product.id) {
+              setProducts((current) => current.map((item) => item.id === product.id ? productFromApi(created) : item));
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Product sync failed.", error);
+        toast.error("Não foi possível sincronizar os produtos com a API.");
+      } finally {
+        apiSyncing.current = false;
+      }
+    })();
+  }, [products]);
+
+  useEffect(() => {
+    if (!apiReady.current || apiSyncing.current) return;
+    apiSyncing.current = true;
+    void (async () => {
+      try {
+        const remote = await api.get<ApiCustomer[]>("/api/customers");
+        const byId = new Map(remote.map((item) => [item.id, item]));
+        for (const customer of customers) {
+          const payload = customerToApi(customer);
+          if (byId.has(customer.id)) {
+            await api.put<ApiCustomer>("/api/customers/" + customer.id, payload);
+          } else {
+            const created = await api.post<ApiCustomer>("/api/customers", payload);
+            if (created.id && created.id !== customer.id) {
+              setCustomers((current) => current.map((item) => item.id === customer.id ? customerFromApi(created) : item));
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Customer sync failed.", error);
+        toast.error("Não foi possível sincronizar os clientes com a API.");
+      } finally {
+        apiSyncing.current = false;
+      }
+    })();
+  }, [customers]);
 
   const pushMovement = useCallback((movement: Omit<StockMovement, "id" | "date">) => {
     setStockMovements((prev) => [{ ...movement, id: crypto.randomUUID(), date: new Date().toISOString() }, ...prev].slice(0, 500));
