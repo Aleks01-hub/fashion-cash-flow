@@ -1,6 +1,8 @@
 package br.com.caixacentral.auth;
 
 import java.security.SecureRandom;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Bean;
 import java.util.HexFormat;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -16,6 +18,24 @@ public class AuthController {
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
     public AuthController(AppUserRepository users) { this.users = users; }
+
+    // Matches the first-access credentials shown by the current login screen.
+    // This seed runs only on an empty user table; change the password immediately.
+    @Bean
+    ApplicationRunner seedInitialAdministrator() {
+        return args -> {
+            if (users.count() != 0) return;
+            AppUser admin = new AppUser();
+            admin.setLogin("admin");
+            admin.setPasswordHash(encoder.encode("admin"));
+            admin.setName("Administrador");
+            admin.setRole("Administrador");
+            admin.setAccessMode("gestao");
+            admin.setPermissionsJson("[\"dashboard\",\"clientes\",\"vendas\",\"produtos\",\"gestao\",\"configuracoes\",\"estoque\",\"reservas\"]");
+            admin.setActive(true);
+            users.save(admin);
+        };
+    }
 
     @PostMapping("/login")
     public Map<String, Object> login(@RequestBody LoginRequest request) {
