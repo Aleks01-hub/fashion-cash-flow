@@ -25,9 +25,14 @@ public class AuthController {
     ApplicationRunner seedInitialAdministrator() {
         return args -> {
             if (users.count() != 0) return;
+            String initialPassword = System.getenv("INITIAL_ADMIN_PASSWORD");
+            if (initialPassword == null || initialPassword.isBlank()) {
+                System.out.println("INITIAL_ADMIN_PASSWORD não definido; administrador inicial não foi criado.");
+                return;
+            }
             AppUser admin = new AppUser();
             admin.setLogin("admin");
-            admin.setPasswordHash(encoder.encode("admin"));
+            admin.setPasswordHash(encoder.encode(initialPassword));
             admin.setName("Administrador");
             admin.setRole("Administrador");
             admin.setAccessMode("gestao");
