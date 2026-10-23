@@ -1,4 +1,4 @@
-import type { Customer, Product, Purchase, AvPayment, Variation, ProductDetails } from "./mock-data";
+import type { AvPlan, Customer, Product, Purchase, AvPayment, Variation, ProductDetails } from "./mock-data";
 
 /** Backend DTOs. JSON columns preserve fields used by the UI while the schema is migrated. */
 export type ApiProduct = {
@@ -90,7 +90,7 @@ export function customerFromApi(row: ApiCustomer): Customer {
         total: Number(row.avTotal ?? 0),
         balance: Number(row.avBalance ?? 0),
         dueDate: row.avDueDate ?? "",
-        plan: parseJson(parseJson<{ plan?: unknown } | null>(row.avPlanJson, null)?.plan as string | undefined, undefined),
+        plan: parseJson<{ plan?: AvPlan | null } | null>(row.avPlanJson, null)?.plan ?? undefined,
       }
     : null;
   return {
