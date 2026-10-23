@@ -16,9 +16,9 @@ public class SaleItem {
     private String size;
     private int quantity;
     private double unitPrice;
+    private double discount;
     private double total;
-
-    public UUID getId(){return id;}
+    public UUID getId(){return id;} public void setId(UUID id){this.id=id;}
     @JsonIgnore public Sale getSale(){return sale;} public void setSale(Sale sale){this.sale=sale;}
     public UUID getProductId(){return productId;} public void setProductId(UUID productId){this.productId=productId;}
     public UUID getVariationId(){return variationId;} public void setVariationId(UUID variationId){this.variationId=variationId;}
@@ -27,5 +27,6 @@ public class SaleItem {
     public String getSize(){return size;} public void setSize(String size){this.size=size;}
     public int getQuantity(){return quantity;} public void setQuantity(int quantity){this.quantity=quantity;}
     public double getUnitPrice(){return unitPrice;} public void setUnitPrice(double unitPrice){this.unitPrice=unitPrice;}
+    public double getDiscount(){return discount;} public void setDiscount(double discount){this.discount=discount;}
     public double getTotal(){return total;} public void setTotal(double total){this.total=total;}
 }

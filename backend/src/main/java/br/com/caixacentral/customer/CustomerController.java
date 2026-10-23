@@ -20,6 +20,7 @@ public class CustomerController {
         current.setName(input.getName()); current.setWhatsapp(input.getWhatsapp()); current.setCpf(input.getCpf());
         current.setAddress(input.getAddress()); current.setPreferredSize(input.getPreferredSize()); current.setBirthDate(input.getBirthDate());
         current.setNotes(input.getNotes()); current.setAvTotal(input.getAvTotal()); current.setAvBalance(input.getAvBalance()); current.setAvDueDate(input.getAvDueDate());
+        current.setPaymentsJson(input.getPaymentsJson()); current.setPurchasesJson(input.getPurchasesJson()); current.setAvPlanJson(input.getAvPlanJson());
         return repository.save(current);
     }
     @DeleteMapping("/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) public void delete(@PathVariable UUID id){repository.deleteById(id);}

@@ -22,6 +22,7 @@ public class ProductController {
         current.setUnit(input.getUnit()); current.setCost(input.getCost()); current.setMargin(input.getMargin()); current.setWholesale(input.getWholesale());
         current.setSupplier(input.getSupplier()); current.setBrand(input.getBrand()); current.setReference(input.getReference()); current.setLocation(input.getLocation());
         current.setInactive(input.isInactive());
+        current.setTagsJson(input.getTagsJson()); current.setVariationsJson(input.getVariationsJson()); current.setDetailsJson(input.getDetailsJson());
         return repository.save(current);
     }
     @DeleteMapping("/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) public void delete(@PathVariable UUID id){repository.deleteById(id);}
