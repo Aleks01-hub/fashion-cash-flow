@@ -1,0 +1,1 @@
+Backup files must stay out of version control. Store database dumps locally and keep an encrypted copy in a separate secure location.
