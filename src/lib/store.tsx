@@ -148,18 +148,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => { window.localStorage.setItem("modah:exchanges", JSON.stringify(exchanges)); }, [exchanges]);
   useEffect(() => { window.localStorage.setItem("modah:stock-movements", JSON.stringify(stockMovements.slice(0, 500))); }, [stockMovements]);
 
-  // Upsert product/customer changes to the API. localStorage remains a temporary
-  // recovery cache; it is no longer the source of truth for these two collections.
+  // Upsert both collections in one queue so simultaneous React effects cannot
+  // cause one collection to be skipped while the other is syncing.
   useEffect(() => {
     if (!apiReady.current || apiSyncing.current) return;
     apiSyncing.current = true;
     void (async () => {
       try {
-        const remote = await api.get<ApiProduct[]>("/api/products");
-        const byId = new Map(remote.map((item) => [item.id, item]));
+        const [remoteProducts, remoteCustomers] = await Promise.all([
+          api.get<ApiProduct[]>("/api/products"),
+          api.get<ApiCustomer[]>("/api/customers"),
+        ]);
+        const productIds = new Set(remoteProducts.map((item) => item.id));
+        const customerIds = new Set(remoteCustomers.map((item) => item.id));
+
         for (const product of products) {
           const payload = productToApi(product);
-          if (byId.has(product.id)) {
+          if (productIds.has(product.id)) {
             await api.put<ApiProduct>("/api/products/" + product.id, payload);
           } else {
             const created = await api.post<ApiProduct>("/api/products", payload);
@@ -168,25 +173,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             }
           }
         }
-      } catch (error) {
-        console.error("Product sync failed.", error);
-        toast.error("Não foi possível sincronizar os produtos com a API.");
-      } finally {
-        apiSyncing.current = false;
-      }
-    })();
-  }, [products]);
-
-  useEffect(() => {
-    if (!apiReady.current || apiSyncing.current) return;
-    apiSyncing.current = true;
-    void (async () => {
-      try {
-        const remote = await api.get<ApiCustomer[]>("/api/customers");
-        const byId = new Map(remote.map((item) => [item.id, item]));
         for (const customer of customers) {
           const payload = customerToApi(customer);
-          if (byId.has(customer.id)) {
+          if (customerIds.has(customer.id)) {
             await api.put<ApiCustomer>("/api/customers/" + customer.id, payload);
           } else {
             const created = await api.post<ApiCustomer>("/api/customers", payload);
@@ -196,13 +185,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (error) {
-        console.error("Customer sync failed.", error);
-        toast.error("Não foi possível sincronizar os clientes com a API.");
+        console.error("API sync failed.", error);
+        toast.error("Não foi possível sincronizar produtos e clientes com a API.");
       } finally {
         apiSyncing.current = false;
       }
     })();
-  }, [customers]);
+  }, [products, customers]);
 
   const pushMovement = useCallback((movement: Omit<StockMovement, "id" | "date">) => {
     setStockMovements((prev) => [{ ...movement, id: crypto.randomUUID(), date: new Date().toISOString() }, ...prev].slice(0, 500));
