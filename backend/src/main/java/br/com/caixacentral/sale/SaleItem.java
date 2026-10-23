@@ -17,7 +17,7 @@ public class SaleItem {
     private double unitPrice;
     private double discount;
     private double total;
-    public UUID getId(){return id;}
+    public UUID getId(){return id;} public void setId(UUID id){this.id=id;}
     @JsonIgnore public Sale getSale(){return sale;} public void setSale(Sale sale){this.sale=sale;}
     public UUID getProductId(){return productId;} public void setProductId(UUID productId){this.productId=productId;}
     public String getProductName(){return productName;} public void setProductName(String productName){this.productName=productName;}
