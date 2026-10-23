@@ -28,7 +28,7 @@ type Ctx = {
   exchanges: ExchangeRecord[]; stockMovements: StockMovement[];
   store: string; setStore: (s: string) => void; online: boolean; setOnline: (v: boolean) => void;
   registerSale: (c: Extract<ParsedCommand, { type: "venda" }>) => void;
-  createSale: (sale: NewSale) => boolean; updateSale: (id: string, sale: NewSale) => boolean; cancelSale: (id: string) => boolean;
+  createSale: (sale: NewSale) => Promise<boolean>; updateSale: (id: string, sale: NewSale) => boolean; cancelSale: (id: string) => boolean;
   registerExchange: (input: { saleId: string; returnedItemId: string; returnedQty: number; replacement: { productId: string; color: string; size: string; quantity: number } | null; difference: number; notes: string }) => boolean;
   registerAv: (c: Extract<ParsedCommand, { type: "abate_av" }>) => void;
   updateCustomer: (id: string, patch: Partial<Customer>) => void;
@@ -203,7 +203,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     toast(text, { description: online ? "Sincronizado em tempo real" : "Salvo localmente (offline)" });
   }, [online]);
 
-  const createSale = useCallback((sale: NewSale) => {
+  const createSale = useCallback(async (sale: NewSale) => {
     if (!sale.items.length || sale.total <= 0) { toast.error("Adicione itens e um valor válido."); return false; }
     const stock = new Map<string, number>();
     for (const item of sale.items) {
@@ -214,6 +214,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!variation || variation.qty - used < item.quantity) { toast.error("Estoque insuficiente para concluir a venda."); return false; }
       stock.set(key, used + item.quantity);
     }
+    // Persist the sale first. The backend validates stock and deducts it in one
+    // database transaction; do not change the UI or stock if the API rejects it.
+    let persisted: Sale;
+    try {
+      persisted = await api.post<Sale>("/api/sales", { ...sale, store: sale.store || store });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível registrar a venda na API.");
+      return false;
+    }
+
     setProducts((prev) => prev.map((p) => ({
       ...p,
       variations: p.variations.map((v) => {
@@ -222,10 +232,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }),
     })));
 
-    const number = sales.reduce((max, s) => Math.max(max, s.number), 1000) + 1;
-    const date = new Date().toISOString();
-    const record: Sale = { ...sale, id: crypto.randomUUID(), number, date, store: sale.store || store, paymentStatus: sale.paymentMethod === "Ficha (AV)" && sale.amountPaid < sale.total ? "pendente" : "pago" };
-    setSales((prev) => [record, ...prev]);
+    const number = persisted.number;
+    const date = persisted.date || new Date().toISOString();
+    const record: Sale = { ...sale, id: persisted.id, number, date, store: sale.store || store, paymentStatus: persisted.paymentStatus ?? (sale.paymentMethod === "Ficha (AV)" && sale.amountPaid < sale.total ? "pendente" : "pago") };
+    setSales((prev) => [record, ...prev.filter((s) => s.id !== record.id)]);
 
     for (const item of sale.items) pushMovement({ type: "venda", productId: item.productId, productName: item.productName, color: item.color, size: item.size, quantity: -item.quantity, note: "Venda #" + number });
     if (sale.customerId) setCustomers((prev) => prev.map((c) => c.id === sale.customerId ? applySaleToCustomer(c, record, record.id, 1, date) : c));
@@ -335,7 +345,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [push, sales, products, exchanges, pushMovement]);
 
   const registerSale = useCallback((c: Extract<ParsedCommand, { type: "venda" }>) => {
-    createSale({
+    void createSale({
       customerId: null, customerName: "Consumidor não identificado", seller: "Alex",
       items: [{ id: crypto.randomUUID(), productId: c.productId, productName: c.produto, color: c.cor, size: c.tamanho, quantity: c.quantidade, unitPrice: c.valor / c.quantidade, discount: 0, total: c.valor }],
       subtotal: c.valor, discount: 0, total: c.valor, paymentMethod: c.forma_pagamento as SalePaymentMethod,
