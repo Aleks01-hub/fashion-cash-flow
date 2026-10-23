@@ -97,7 +97,7 @@ public class SaleController {
         products.saveAll(changedProducts.values());
         sale.setDate(sale.getDate() == null ? Instant.now() : sale.getDate());
         sale.setPaymentStatus("Ficha (AV)".equals(sale.getPaymentMethod()) && sale.getAmountPaid() < sale.getTotal() ? "pendente" : "pago");
-        sale.getItems().forEach(item -> item.setSale(sale));
+        sale.getItems().forEach(item -> { item.setId(null); item.setSale(sale); });
         return repository.save(sale);
     }
 
