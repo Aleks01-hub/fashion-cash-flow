@@ -150,14 +150,14 @@ export function QuickSaleScreen() {
     }));
   };
 
-  const finishSale = () => {
+  const finishSale = async () => {
     if (!canFinish) return;
     const customerName = selectedCustomer?.name ?? "Consumidor não identificado";
     const effectiveDueDate = payment === "Ficha (AV)"
       ? dueDate || selectedCustomer?.av?.dueDate || new Date(Date.now() + 30 * 864e5).toISOString().slice(0, 10)
       : null;
 
-    const ok = createSale({
+    const ok = await createSale({
       customerId: selectedCustomerId,
       customerName,
       seller: profileSeller(),
