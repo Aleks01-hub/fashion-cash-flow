@@ -66,7 +66,7 @@ const AuthContext=createContext<AuthValue|null>(null);
 
 export function AuthProvider({children}:{children:ReactNode}){
   const [users,setUsers]=useState<AppUser[]>(loadUsers);
-  const [sessionId,setSessionId]=useState<string|null>(()=>typeof window==="undefined"?null:localStorage.getItem(SESSION_KEY));
+  const [sessionId,setSessionId]=useState<string|null>(()=>typeof window==="undefined" || !localStorage.getItem("caixa-central:access-token") ? null : localStorage.getItem(SESSION_KEY));
   const user=users.find((u)=>u.id===sessionId&&u.active)||null;
   const isAdmin=user?.id==="admin"||user?.role==="Administrador";
   const persist=(next:AppUser[])=>{setUsers(next);localStorage.setItem(USERS_KEY,JSON.stringify(next));};
