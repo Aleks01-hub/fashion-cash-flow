@@ -1,4 +1,6 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { api } from "./api";
+import { customerFromApi, customerToApi, productFromApi, productToApi, type ApiCustomer, type ApiProduct } from "./api-mappers";
 import { toast } from "sonner";
 import { customers as seedCustomers, products as seedProducts, reservations as seedReservations, sales as seedSales, stores, type Customer, type Product, type Reservation, type Sale, type SalePaymentMethod } from "./mock-data";
 import { brl, isOverdue } from "./format";
@@ -26,7 +28,7 @@ type Ctx = {
   exchanges: ExchangeRecord[]; stockMovements: StockMovement[];
   store: string; setStore: (s: string) => void; online: boolean; setOnline: (v: boolean) => void;
   registerSale: (c: Extract<ParsedCommand, { type: "venda" }>) => void;
-  createSale: (sale: NewSale) => boolean; updateSale: (id: string, sale: NewSale) => boolean; cancelSale: (id: string) => boolean;
+  createSale: (sale: NewSale) => Promise<boolean>; updateSale: (id: string, sale: NewSale) => boolean; cancelSale: (id: string) => boolean;
   registerExchange: (input: { saleId: string; returnedItemId: string; returnedQty: number; replacement: { productId: string; color: string; size: string; quantity: number } | null; difference: number; notes: string }) => boolean;
   registerAv: (c: Extract<ParsedCommand, { type: "abate_av" }>) => void;
   updateCustomer: (id: string, patch: Partial<Customer>) => void;
@@ -105,11 +107,95 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [online, setOnline] = useState(true);
   const [feed, setFeed] = useState<{ id: string; text: string; at: string }[]>([]);
 
+  const apiReady = useRef(false);
+  const apiSyncing = useRef(false);
+
+  // Products and customers are loaded from the API first. Existing local data is
+  // imported only when the corresponding server collection is empty.
+  useEffect(() => {
+    let cancelled = false;
+    const initializeApiData = async () => {
+      try {
+        let remoteProducts = await api.get<ApiProduct[]>("/api/products");
+        let remoteCustomers = await api.get<ApiCustomer[]>("/api/customers");
+        const remoteSales = await api.get<Sale[]>("/api/sales");
+        const remoteMovements = await api.get<StockMovement[]>("/api/stock/movements");
+
+        if (remoteProducts.length === 0) {
+          for (const product of products) await api.post<ApiProduct>("/api/products", productToApi(product));
+          remoteProducts = await api.get<ApiProduct[]>("/api/products");
+        }
+        if (remoteCustomers.length === 0) {
+          for (const customer of customers) await api.post<ApiCustomer>("/api/customers", customerToApi(customer));
+          remoteCustomers = await api.get<ApiCustomer[]>("/api/customers");
+        }
+        if (cancelled) return;
+        if (remoteProducts.length) setProducts(remoteProducts.map(productFromApi));
+        if (remoteCustomers.length) setCustomers(remoteCustomers.map(customerFromApi));
+        setSales(remoteSales);
+        setStockMovements(remoteMovements);
+        apiReady.current = true;
+      } catch (error) {
+        console.error("API initialization failed; keeping the local cache available.", error);
+        toast.error("API indisponível. Produtos e clientes permanecem no cache local até reconectar.");
+      }
+    };
+    void initializeApiData();
+    return () => { cancelled = true; };
+    // Initial local data is used only as a one-time import source for an empty API.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => { window.localStorage.setItem("modah:products", JSON.stringify(products)); }, [products]);
   useEffect(() => { window.localStorage.setItem("modah:customers", JSON.stringify(customers)); }, [customers]);
   useEffect(() => { window.localStorage.setItem("modah:sales", JSON.stringify(sales)); }, [sales]);
   useEffect(() => { window.localStorage.setItem("modah:exchanges", JSON.stringify(exchanges)); }, [exchanges]);
   useEffect(() => { window.localStorage.setItem("modah:stock-movements", JSON.stringify(stockMovements.slice(0, 500))); }, [stockMovements]);
+
+  // Upsert both collections in one queue so simultaneous React effects cannot
+  // cause one collection to be skipped while the other is syncing.
+  useEffect(() => {
+    if (!apiReady.current || apiSyncing.current) return;
+    apiSyncing.current = true;
+    void (async () => {
+      try {
+        const [remoteProducts, remoteCustomers] = await Promise.all([
+          api.get<ApiProduct[]>("/api/products"),
+          api.get<ApiCustomer[]>("/api/customers"),
+        ]);
+        const productIds = new Set(remoteProducts.map((item) => item.id));
+        const customerIds = new Set(remoteCustomers.map((item) => item.id));
+
+        for (const product of products) {
+          const payload = productToApi(product);
+          if (productIds.has(product.id)) {
+            await api.put<ApiProduct>("/api/products/" + product.id, payload);
+          } else {
+            const created = await api.post<ApiProduct>("/api/products", payload);
+            if (created.id && created.id !== product.id) {
+              setProducts((current) => current.map((item) => item.id === product.id ? productFromApi(created) : item));
+            }
+          }
+        }
+        for (const customer of customers) {
+          const payload = customerToApi(customer);
+          if (customerIds.has(customer.id)) {
+            await api.put<ApiCustomer>("/api/customers/" + customer.id, payload);
+          } else {
+            const created = await api.post<ApiCustomer>("/api/customers", payload);
+            if (created.id && created.id !== customer.id) {
+              setCustomers((current) => current.map((item) => item.id === customer.id ? customerFromApi(created) : item));
+            }
+          }
+        }
+      } catch (error) {
+        console.error("API sync failed.", error);
+        toast.error("Não foi possível sincronizar produtos e clientes com a API.");
+      } finally {
+        apiSyncing.current = false;
+      }
+    })();
+  }, [products, customers]);
 
   const pushMovement = useCallback((movement: Omit<StockMovement, "id" | "date">) => {
     setStockMovements((prev) => [{ ...movement, id: crypto.randomUUID(), date: new Date().toISOString() }, ...prev].slice(0, 500));
@@ -121,7 +207,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     toast(text, { description: online ? "Sincronizado em tempo real" : "Salvo localmente (offline)" });
   }, [online]);
 
-  const createSale = useCallback((sale: NewSale) => {
+  const createSale = useCallback(async (sale: NewSale) => {
     if (!sale.items.length || sale.total <= 0) { toast.error("Adicione itens e um valor válido."); return false; }
     const stock = new Map<string, number>();
     for (const item of sale.items) {
@@ -132,6 +218,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!variation || variation.qty - used < item.quantity) { toast.error("Estoque insuficiente para concluir a venda."); return false; }
       stock.set(key, used + item.quantity);
     }
+    // Persist the sale first. The backend validates stock and deducts it in one
+    // database transaction; do not change the UI or stock if the API rejects it.
+    let persisted: Sale;
+    try {
+      persisted = await api.post<Sale>("/api/sales", { ...sale, store: sale.store || store });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível registrar a venda na API.");
+      return false;
+    }
+
     setProducts((prev) => prev.map((p) => ({
       ...p,
       variations: p.variations.map((v) => {
@@ -140,10 +236,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }),
     })));
 
-    const number = sales.reduce((max, s) => Math.max(max, s.number), 1000) + 1;
-    const date = new Date().toISOString();
-    const record: Sale = { ...sale, id: crypto.randomUUID(), number, date, store: sale.store || store, paymentStatus: sale.paymentMethod === "Ficha (AV)" && sale.amountPaid < sale.total ? "pendente" : "pago" };
-    setSales((prev) => [record, ...prev]);
+    const number = persisted.number;
+    const date = persisted.date || new Date().toISOString();
+    const record: Sale = { ...sale, id: persisted.id, number, date, store: sale.store || store, paymentStatus: persisted.paymentStatus ?? (sale.paymentMethod === "Ficha (AV)" && sale.amountPaid < sale.total ? "pendente" : "pago") };
+    setSales((prev) => [record, ...prev.filter((s) => s.id !== record.id)]);
 
     for (const item of sale.items) pushMovement({ type: "venda", productId: item.productId, productName: item.productName, color: item.color, size: item.size, quantity: -item.quantity, note: "Venda #" + number });
     if (sale.customerId) setCustomers((prev) => prev.map((c) => c.id === sale.customerId ? applySaleToCustomer(c, record, record.id, 1, date) : c));
@@ -253,7 +349,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [push, sales, products, exchanges, pushMovement]);
 
   const registerSale = useCallback((c: Extract<ParsedCommand, { type: "venda" }>) => {
-    createSale({
+    void createSale({
       customerId: null, customerName: "Consumidor não identificado", seller: "Alex",
       items: [{ id: crypto.randomUUID(), productId: c.productId, productName: c.produto, color: c.cor, size: c.tamanho, quantity: c.quantidade, unitPrice: c.valor / c.quantidade, discount: 0, total: c.valor }],
       subtotal: c.valor, discount: 0, total: c.valor, paymentMethod: c.forma_pagamento as SalePaymentMethod,
@@ -277,11 +373,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [push]);
   const restock = useCallback((productId: string, color: string, size: string, qty: number, note = "Entrada manual") => {
     if (qty <= 0) return;
-    setProducts((prev) => prev.map((p) => p.id !== productId ? p : { ...p, variations: p.variations.map((v) => v.color === color && v.size === size ? { ...v, qty: v.qty + qty } : v) }));
     const p = products.find((x) => x.id === productId);
     const v = p?.variations.find((x) => x.color === color && x.size === size);
-    if (p && v) pushMovement({ type: "entrada", productId, productName: p.name, color, size, quantity: qty, note });
-    push("Entrada de estoque: " + color + " " + size + " +" + qty);
+    if (!p || !v) { toast.error("Produto ou variação não encontrada."); return; }
+    void api.post("/api/stock/adjustments", { productId, color, size, quantity: qty, type: "entrada", note })
+      .then(() => {
+        setProducts((prev) => prev.map((item) => item.id !== productId ? item : { ...item, variations: item.variations.map((variation) => variation.color === color && variation.size === size ? { ...variation, qty: variation.qty + qty } : variation) }));
+        pushMovement({ type: "entrada", productId, productName: p.name, color, size, quantity: qty, note });
+        push("Entrada de estoque: " + color + " " + size + " +" + qty);
+      })
+      .catch((error) => toast.error(error instanceof Error ? error.message : "Não foi possível atualizar o estoque na API."));
   }, [push, products, pushMovement]);
 
   const updateProduct = useCallback((id: string, patch: Partial<Product>) => setProducts((prev) => prev.map((p) => p.id === id ? { ...p, ...patch } : p)), []);
