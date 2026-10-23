@@ -6,8 +6,8 @@ services:
     environment:
       MYSQL_DATABASE: caixa_central
       MYSQL_USER: caixa
-      MYSQL_PASSWORD: ${DATABASE_PASSWORD:?Defina DATABASE_PASSWORD no arquivo .env}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD no arquivo .env}
+      MYSQL_PASSWORD: ${DATABASE_PASSWORD:-caixa_dev_change_me}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_dev_change_me}
     ports:
       - "${MYSQL_PORT:-3306}:3306"
     volumes:

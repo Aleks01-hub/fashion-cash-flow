@@ -10,6 +10,7 @@ public class SaleItem {
     @Id @GeneratedValue private UUID id;
     @ManyToOne(fetch=FetchType.LAZY,optional=false) @JoinColumn(name="sale_id") private Sale sale;
     private UUID productId;
+    private UUID variationId;
     private String productName;
     private String color;
     private String size;
@@ -20,6 +21,7 @@ public class SaleItem {
     public UUID getId(){return id;} public void setId(UUID id){this.id=id;}
     @JsonIgnore public Sale getSale(){return sale;} public void setSale(Sale sale){this.sale=sale;}
     public UUID getProductId(){return productId;} public void setProductId(UUID productId){this.productId=productId;}
+    public UUID getVariationId(){return variationId;} public void setVariationId(UUID variationId){this.variationId=variationId;}
     public String getProductName(){return productName;} public void setProductName(String productName){this.productName=productName;}
     public String getColor(){return color;} public void setColor(String color){this.color=color;}
     public String getSize(){return size;} public void setSize(String size){this.size=size;}
