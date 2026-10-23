@@ -133,7 +133,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (remoteProducts.length) setProducts(remoteProducts.map(productFromApi));
         if (remoteCustomers.length) setCustomers(remoteCustomers.map(customerFromApi));
         setSales(remoteSales);
-        if (remoteMovements.length) setStockMovements(remoteMovements);
+        setStockMovements(remoteMovements);
         apiReady.current = true;
       } catch (error) {
         console.error("API initialization failed; keeping the local cache available.", error);
