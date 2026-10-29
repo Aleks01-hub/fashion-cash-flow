@@ -1,0 +1,169 @@
+﻿/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=1*/;
+/*!40019 SET @@session.max_delayed_threads=0*/;
+/*!50003 SET @OLD_COMPLETION_TYPE=@@COMPLETION_TYPE,COMPLETION_TYPE=0*/;
+DELIMITER /*!*/;
+# at 4
+#261023 21:40:35 server id 1  end_log_pos 127 CRC32 0x0429e9df 	Start: binlog v 4, server v 8.4.11 created 261023 21:40:35 at startup
+# Warning: this binlog is either in use or was not closed properly.
+ROLLBACK/*!*/;
+# at 127
+#261023 21:40:35 server id 1  end_log_pos 158 CRC32 0xb4816716 	Ignorable
+# Ignorable event type 35 (MySQL Previous_gtids)
+# at 158
+#261023 22:44:03 server id 1  end_log_pos 237 CRC32 0x1de1ce8a 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 237
+#261023 22:44:03 server id 1  end_log_pos 670 CRC32 0x2d92aab7 	Query	thread_id=769	exec_time=0	error_code=0	xid=0
+use `caixa_central`/*!*/;
+SET TIMESTAMP=1792795443/*!*/;
+SET @@session.pseudo_thread_id=769/*!*/;
+SET @@session.foreign_key_checks=1, @@session.sql_auto_is_null=0, @@session.unique_checks=1, @@session.autocommit=1, @@session.check_constraint_checks=1, @@session.system_versioning_insert_history=0/*!*/;
+SET @@session.sql_mode=1168113696/*!*/;
+SET @@session.auto_increment_increment=1, @@session.auto_increment_offset=1/*!*/;
+/*!\C utf8mb4 *//*!*/;
+SET @@session.character_set_client=utf8mb4,@@session.collation_connection=255,@@session.collation_server=255/*!*/;
+SET @@session.lc_time_names=0/*!*/;
+SET @@session.collation_database=DEFAULT/*!*/;
+create table av_accounts (id binary(16) not null, created_at datetime(6) not null, current_balance decimal(12,2) not null, description varchar(240) not null, due_date date, original_amount decimal(12,2) not null, status enum ('ACTIVE','OVERDUE','PAID') not null, customer_id binary(16) not null, primary key (id)) engine=InnoDB
+/*!*/;
+# at 670
+#261023 22:44:03 server id 1  end_log_pos 749 CRC32 0x27945631 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 749
+#261023 22:44:03 server id 1  end_log_pos 1199 CRC32 0x36bc5568 	Query	thread_id=769	exec_time=0	error_code=0	xid=0
+SET TIMESTAMP=1792795443/*!*/;
+create table av_payments (id binary(16) not null, amount decimal(12,2) not null, balance_after decimal(12,2) not null, balance_before decimal(12,2) not null, method enum ('CASH','CREDIT','DEBIT','OTHER','PIX','TRANSFER') not null, notes varchar(500), paid_at datetime(6) not null, account_id binary(16) not null, primary key (id)) engine=InnoDB
+/*!*/;
+# at 1199
+#261023 22:44:03 server id 1  end_log_pos 1278 CRC32 0x64072964 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 1278
+#261023 22:44:03 server id 1  end_log_pos 1707 CRC32 0x386cef25 	Query	thread_id=769	exec_time=0	error_code=0	xid=0
+SET TIMESTAMP=1792795443/*!*/;
+create table customers (id binary(16) not null, address varchar(255), av_balance float(53) not null, av_due_date date, av_total float(53) not null, birth_date date, cpf varchar(255), name varchar(255) not null, notes varchar(255), preferred_size varchar(255), whatsapp varchar(255) not null, primary key (id)) engine=InnoDB
+/*!*/;
+# at 1707
+#261023 22:44:03 server id 1  end_log_pos 1786 CRC32 0x9211c228 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 1786
+#261023 22:44:03 server id 1  end_log_pos 2122 CRC32 0xf3c54df7 	Query	thread_id=769	exec_time=0	error_code=0	xid=0
+SET TIMESTAMP=1792795443/*!*/;
+create table product_variations (id binary(16) not null, color varchar(40) not null, min_stock integer not null, product_id binary(16) not null, quantity integer not null, size varchar(20) not null, primary key (id)) engine=InnoDB
+/*!*/;
+# at 2122
+#261023 22:44:03 server id 1  end_log_pos 2201 CRC32 0xe9357683 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 2201
+#261023 22:44:03 server id 1  end_log_pos 2744 CRC32 0x21602c5e 	Query	thread_id=769	exec_time=0	error_code=0	xid=0
+SET TIMESTAMP=1792795443/*!*/;
+create table products (id binary(16) not null, barcode varchar(255), brand varchar(255), category varchar(255), cost float(53) not null, inactive bit not null, location varchar(255), margin float(53) not null, min_stock integer not null, name varchar(255) not null, photo mediumtext, price float(53) not null, reference varchar(255), supplier varchar(255), unit varchar(255), wholesale float(53) not null, primary key (id)) engine=InnoDB
+/*!*/;
+# at 2744
+#261023 22:44:03 server id 1  end_log_pos 2823 CRC32 0xae69b2d7 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 2823
+#261023 22:44:03 server id 1  end_log_pos 3236 CRC32 0x1985077c 	Query	thread_id=769	exec_time=0	error_code=0	xid=0
+SET TIMESTAMP=1792795443/*!*/;
+create table sale_items (id binary(16) not null, color varchar(255), product_id binary(16), product_name varchar(255), quantity integer not null, size varchar(255), total float(53) not null, unit_price float(53) not null, variation_id binary(16), sale_id binary(16) not null, primary key (id)) engine=InnoDB
+/*!*/;
+# at 3236
+#261023 22:44:03 server id 1  end_log_pos 3315 CRC32 0x8d8099c1 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 3315
+#261023 22:44:03 server id 1  end_log_pos 3536 CRC32 0x33dc5b35 	Query	thread_id=769	exec_time=0	error_code=0	xid=0
+SET TIMESTAMP=1792795443/*!*/;
+create table sale_number_sequence (id bigint not null, next_number bigint not null, primary key (id)) engine=InnoDB
+/*!*/;
+# at 3536
+#261023 22:44:03 server id 1  end_log_pos 3615 CRC32 0x685b8285 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 3615
+#261023 22:44:03 server id 1  end_log_pos 4079 CRC32 0x7cc39f41 	Query	thread_id=769	exec_time=0	error_code=0	xid=0
+SET TIMESTAMP=1792795443/*!*/;
+create table sales (id binary(16) not null, amount_paid float(53) not null, customer_id binary(16), customer_name varchar(255), date datetime(6) not null, discount float(53) not null, due_date date, notes varchar(255), number bigint not null, payment_method varchar(255), subtotal float(53) not null, total float(53) not null, primary key (id)) engine=InnoDB
+/*!*/;
+# at 4079
+#261023 22:44:03 server id 1  end_log_pos 4156 CRC32 0xe3c90f4b 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 4156
+#261023 22:44:03 server id 1  end_log_pos 4325 CRC32 0xfb7e1d8b 	Query	thread_id=769	exec_time=1	error_code=0	xid=0
+SET TIMESTAMP=1792795443/*!*/;
+create index idx_av_account_customer on av_accounts (customer_id)
+/*!*/;
+# at 4325
+#261023 22:44:04 server id 1  end_log_pos 4404 CRC32 0x0f7a0562 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 4404
+#261023 22:44:04 server id 1  end_log_pos 4580 CRC32 0x54ae51e6 	Query	thread_id=769	exec_time=0	error_code=0	xid=0
+SET TIMESTAMP=1792795444/*!*/;
+create index idx_av_account_status_due on av_accounts (status, due_date)
+/*!*/;
+# at 4580
+#261023 22:44:04 server id 1  end_log_pos 4659 CRC32 0x5b47d099 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 4659
+#261023 22:44:04 server id 1  end_log_pos 4840 CRC32 0x14067311 	Query	thread_id=769	exec_time=0	error_code=0	xid=0
+SET TIMESTAMP=1792795444/*!*/;
+create index idx_av_payment_account_date on av_payments (account_id, paid_at)
+/*!*/;
+# at 4840
+#261023 22:44:04 server id 1  end_log_pos 4919 CRC32 0xf94e8ef5 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 4919
+#261023 22:44:04 server id 1  end_log_pos 5116 CRC32 0x1fc82291 	Query	thread_id=769	exec_time=0	error_code=0	xid=0
+SET TIMESTAMP=1792795444/*!*/;
+create index idx_variation_product_color_size on product_variations (product_id, color, size)
+/*!*/;
+# at 5116
+#261023 22:44:04 server id 1  end_log_pos 5195 CRC32 0x0fe87508 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 5195
+#261023 22:44:04 server id 1  end_log_pos 5377 CRC32 0x38e4a59d 	Query	thread_id=769	exec_time=0	error_code=0	xid=0
+SET TIMESTAMP=1792795444/*!*/;
+alter table sales add constraint UKlesw64uqp5w4p8dfvfacpgnxl unique (number)
+/*!*/;
+# at 5377
+#261023 22:44:04 server id 1  end_log_pos 5456 CRC32 0xd6490f57 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 5456
+#261023 22:44:04 server id 1  end_log_pos 5680 CRC32 0x10a9a86b 	Query	thread_id=769	exec_time=0	error_code=0	xid=0
+SET TIMESTAMP=1792795444/*!*/;
+alter table av_accounts add constraint FKkju4rwtteiccksx012jxwvdf8 foreign key (customer_id) references customers (id)
+/*!*/;
+# at 5680
+#261023 22:44:04 server id 1  end_log_pos 5759 CRC32 0x75b86599 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 5759
+#261023 22:44:04 server id 1  end_log_pos 5984 CRC32 0x1eedd15e 	Query	thread_id=769	exec_time=0	error_code=0	xid=0
+SET TIMESTAMP=1792795444/*!*/;
+alter table av_payments add constraint FKdmck1rc1cbgy8wn9qejn5nfrt foreign key (account_id) references av_accounts (id)
+/*!*/;
+# at 5984
+#261023 22:44:04 server id 1  end_log_pos 6063 CRC32 0xbdc294e0 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 6063
+#261023 22:44:04 server id 1  end_log_pos 6278 CRC32 0x404a5f3f 	Query	thread_id=769	exec_time=1	error_code=0	xid=0
+SET TIMESTAMP=1792795444/*!*/;
+alter table sale_items add constraint FK7tcpbc5c5mpnm8fl2phl8ep7l foreign key (sale_id) references sales (id)
+/*!*/;
+# at 6278
+#261023 22:45:27 server id 1  end_log_pos 6357 CRC32 0x38d5a583 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 6357
+#261023 22:45:27 server id 1  end_log_pos 6549 CRC32 0x7269a565 	Query	thread_id=796	exec_time=0	error_code=0	xid=0
+SET TIMESTAMP=1792795527/*!*/;
+alter table av_accounts modify column status enum ('ACTIVE','OVERDUE','PAID') not null
+/*!*/;
+# at 6549
+#261023 22:45:27 server id 1  end_log_pos 6628 CRC32 0xa0352973 	Ignorable
+# Ignorable event type 34 (MySQL Anonymous_Gtid)
+# at 6628
+#261023 22:45:27 server id 1  end_log_pos 6843 CRC32 0xa79a2bce 	Query	thread_id=796	exec_time=0	error_code=0	xid=0
+SET TIMESTAMP=1792795527/*!*/;
+alter table av_payments modify column method enum ('CASH','CREDIT','DEBIT','OTHER','PIX','TRANSFER') not null
+/*!*/;
+DELIMITER ;
+# End of log file
+ROLLBACK /* added by mysqlbinlog */;
+/*!50003 SET COMPLETION_TYPE=@OLD_COMPLETION_TYPE*/;
+/*!50530 SET @@SESSION.PSEUDO_SLAVE_MODE=0*/;
