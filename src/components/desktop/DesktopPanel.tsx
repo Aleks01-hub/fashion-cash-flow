@@ -1,6 +1,6 @@
 import type { Permission } from "@/lib/auth";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, BarChart3, Boxes, LayoutDashboard, MessageCircle, Radio, Users, Menu, ShoppingBag, X, Package, Wallet as WalletIcon, Settings, UserCircle } from "lucide-react";
+import { AlertTriangle, Database, BarChart3, Boxes, LayoutDashboard, MessageCircle, Radio, Users, Menu, ShoppingBag, X, Package, Wallet as WalletIcon, Settings, UserCircle } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,14 @@ import { NewCustomerDialog } from "./NewCustomerDialog";
 import { SalesPage } from "./SalesPage";
 import { OperationsSection } from "./OperationsSection";
 import { ProfileSettingsSection } from "./ProfileSettingsSection";
+import { AvAccountsPanel } from "./AvAccountsPanel";
+import { LocalDataMigrationPanel } from "./LocalDataMigrationPanel";
 
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "fichas", label: "Clientes", icon: Users },
+  { id: "av-api", label: "AV (MySQL)", icon: WalletIcon },
+  { id: "migracao-api", label: "Migração MySQL", icon: Database },
   { id: "vendas", label: "Vendas", icon: ShoppingBag },
   { id: "produtos", label: "Produtos", icon: Package },
   { id: "fechamento", label: "Gestão", icon: BarChart3 },
@@ -29,7 +33,7 @@ const NAV = [
 export function DesktopPanel() {
   const { customers, products, sales, feed, updateProduct, store } = useStore();
   const { can, user, logout } = useAuth();
-  const permOf = (id: string): Permission => (id === "fichas" ? "clientes" : id === "fechamento" ? "gestao" : id) as Permission;
+  const permOf = (id: string): Permission => (id === "fichas" || id === "av-api" || id === "migracao-api" ? "clientes" : id === "fechamento" ? "gestao" : id) as Permission;
   const allowedNav = NAV.filter((n) => can(permOf(n.id)));
   const [section, setSection] = useState<(typeof NAV)[number]["id"]>(() => allowedNav[0]?.id || "dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
@@ -81,6 +85,8 @@ export function DesktopPanel() {
     <main className="min-w-0 space-y-6 p-4 md:p-8">
       <div className="flex items-center gap-3"><Button variant="outline" size="icon" onClick={() => setMenuOpen(true)}><Menu className="h-5 w-5" /></Button><h1 className="text-lg font-bold">{NAV.find((n) => n.id === section)?.label}</h1><span className="ml-auto text-xs text-muted-foreground">{user?.name}</span><Button variant="outline" size="sm" onClick={logout}>Sair</Button></div>
 
+      {section === "av-api" && <AvAccountsPanel />}
+      {section === "migracao-api" && <LocalDataMigrationPanel />}
       {section === "vendas" && <SalesPage />}
       {section === "produtos" && <ProductsSection />}
 

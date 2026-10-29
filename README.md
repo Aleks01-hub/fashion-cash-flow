@@ -17,7 +17,7 @@ O frontend continua operando localmente para o MVP, usando `localStorage` para m
 
 ## Backend
 
-A base de uma API em **Java + Spring Boot + PostgreSQL** está em `/backend`. O frontend ainda não foi migrado para consumir a API; a próxima etapa é substituir a persistência local por endpoints autenticados e centralizados.
+A base de uma API em **Java + Spring Boot + MySQL** está em `/backend`. O frontend ainda não foi migrado para consumir a API; a próxima etapa é substituir a persistência local por endpoints autenticados e centralizados.
 
 ## Desenvolvimento
 
@@ -43,3 +43,7 @@ GET http://localhost:8080/api/health
 ## Observação
 
 O projeto está estruturado como um MVP funcional de gestão comercial. Para produção, a autenticação, autorização, auditoria e persistência centralizada devem ser ligadas ao backend.
+
+---
+
+**Nota:** Este projeto foi migrado do Lovable para um setup independente com TanStack Start + Vite + React.

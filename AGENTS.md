@@ -1,10 +1,27 @@
-<!-- LOVABLE:BEGIN -->
-> [!IMPORTANT]
-> This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
-> published git history — force pushing, or rebasing/amending/squashing commits
-> that are already pushed — as it rewrites history on Lovable's side and the
-> user will likely lose their project history.
->
-> Commits you push to the connected branch sync back to Lovable and show up in
-> the editor, so keep the branch in a working state.
-<!-- LOVABLE:END -->
+# Fashion Cash Flow — Development Guidelines
+
+This project is a standalone TanStack Start + React + TypeScript application with a Spring Boot backend.
+
+## Project Structure
+
+- `/src` - Frontend (TanStack Start + React + TypeScript)
+- `/backend` - Backend (Java + Spring Boot + PostgreSQL)
+
+## Development Commands
+
+```bash
+# Frontend
+npm install
+npm run dev
+
+# Backend
+docker compose up -d
+cd backend
+mvn spring-boot:run
+```
+
+## Key Technologies
+
+- **Frontend:** TanStack Start, React 19, TypeScript, Tailwind CSS 4, Radix UI
+- **Backend:** Spring Boot 4, Java 17, PostgreSQL, WebSocket
+- **Database:** PostgreSQL (production), localStorage (MVP frontend)
